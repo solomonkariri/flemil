@@ -1,0 +1,10 @@
+MIDlet-1: Flemil Demo,/flemil.png,com.kariri.j2me.test.APITest
+MIDlet-Jar-URL: ./Flemil.jar
+MIDlet-Icon: /flemil.png
+MicroEdition-Configuration: CLDC-1.0
+MIDlet-Version: 1.0.0
+MIDlet-Vendor: KenyaMobileWorld Consulting Co. Ltd.
+MIDlet-Name: Flemil Demo
+MIDlet-Description: A Demo of the UI features that comes with the Flemil mobile UI library
+MIDlet-Info-URL: http://flemil.com/about/
+MicroEdition-Profile: MIDP-2.0

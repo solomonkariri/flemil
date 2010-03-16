@@ -1,0 +1,6 @@
+#Sun Jan 24 00:32:26 EAT 2010
+eclipse.preferences.version=1
+obfuscate_use_project=true
+preverify_config_value=CLDC-1.0
+proguard_options=-dontnote -defaultpackage '' -forceprocessing -optimizationpasses 3 -overloadaggressively -repackageclasses '' -allowaccessmodification
+proguard_use_specified=true
