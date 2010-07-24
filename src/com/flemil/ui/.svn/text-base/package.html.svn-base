@@ -1,9 +1,0 @@
-<body>
-<p>This package contains interfaces that represent the collective properties for components that can be displayed
-on the screen. Every item that can be displayed on the screen must implement the Item interface. Items that
-allow scrolling of their internal or contained items must implement the Scrollable interface which extends the 
-Item interface. Any Item that is used to display text to the user must implement the TextItem interface and every
-Item that is to be displayed as a window must implement the Window interface. The interfaces bring together
-features that are specific to Items of a certain nature as well as features that should e available for
-all types of Items</p>
-</body>
