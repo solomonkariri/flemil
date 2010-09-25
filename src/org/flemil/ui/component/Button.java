@@ -59,6 +59,7 @@ public class Button implements TextItem
         nameDisplayer.setParent(this);
         nameDisplayer.setFont((Font)GlobalControl.getControl().getStyle().getProperty(
                 Style.BUTTON_FONT));
+        nameDisplayer.setAlignment(TextItem.ALIGN_CENTER);
 	}
 	public void focusGained() 
 	{
@@ -83,14 +84,15 @@ public class Button implements TextItem
 		nameDisplayer.setFont((Font)GlobalControl.getControl().getStyle().getProperty(
                 Style.BUTTON_FONT));
 		Rectangle min=nameDisplayer.getMinimumDisplayRect(availWidth);
-		min.width+=6;
+		min.width+=((Integer)GlobalControl.getControl().getStyle().getProperty(
+                Style.CURVES_RADIUS)).intValue()*2;
 		min.height+=2;
 		return min;
 	}
 
 	public Item getParent() 
 	{
-		return this.parent;
+		return this.nameDisplayer.getParent();
 	}
 
 	public void keyPressedEvent(int keyCode) 
@@ -186,34 +188,33 @@ public class Button implements TextItem
             	g.setColor(((Integer)GlobalControl.getControl().getStyle().
         				getProperty(Style.BUTTON_FOREGROUND)).intValue());
         	}
-        	Rectangle interDisp=null;
-        	if((interDisp=nameDisplayer.getDisplayRect().calculateIntersection(clip))!=null)
-            {
-        		g.setClip(interDisp.x, interDisp.y, interDisp.width, interDisp.height);
-        		int txtStart=0;
-        		if(nameDisplayer.getTextWidth()>nameDisplayer.getDisplayRect().width)
-        		{
-            		g.drawString(nameDisplayer.getText(), nameDisplayer.getDisplayRect().x+nameDisplayer.getTextIndent()+1,
-                            nameDisplayer.getDisplayRect().y+2,
-                            Graphics.TOP|Graphics.LEFT);
-        		}
-        		else
-        		{
-        			switch (nameDisplayer.getAlignment()) {
-					case TextItem.ALIGN_RIGHT:
-						txtStart=nameDisplayer.getDisplayRect().x+nameDisplayer.getDisplayRect().width-
-						font.stringWidth(nameDisplayer.getText())-1;
-						break;
-					case TextItem.ALIGN_CENTER:
-						txtStart=nameDisplayer.getDisplayRect().x+
-						(nameDisplayer.getDisplayRect().width-font.
-								stringWidth(nameDisplayer.getText()))/2;
-						break;
-					}
-        			g.drawString(nameDisplayer.getText(), txtStart, 
-        					nameDisplayer.getDisplayRect().y+2, Graphics.TOP|Graphics.LEFT);
-        		}
-            }
+//        	g.setColor(0xffffff);
+//        	g.fillRect(nameDisplayer.getDisplayRect().x, nameDisplayer.getDisplayRect().y, 
+//        			nameDisplayer.getDisplayRect().width, 
+//        			nameDisplayer.getDisplayRect().height);
+        	int prev=focussed?((Integer)GlobalControl.getControl().getStyle().
+    				getProperty(Style.COMPONENT_FOCUS_FOREGROUND)).intValue():
+    					((Integer)GlobalControl.getControl().getStyle().
+    				getProperty(Style.COMPONENT_FOREGROUND)).intValue();
+    		if(focussed){
+    			GlobalControl.getControl().getStyle().setProperty(Style.COMPONENT_FOCUS_FOREGROUND, 
+    					GlobalControl.getControl().getStyle().
+        				getProperty(Style.BUTTON_FOCUS_FOREGROUND));
+    		}
+    		else{
+    			GlobalControl.getControl().getStyle().setProperty(Style.COMPONENT_FOREGROUND, 
+    					GlobalControl.getControl().getStyle().
+        				getProperty(Style.BUTTON_FOREGROUND));
+    		}
+        	nameDisplayer.paint(g, clip);
+        	if(focussed){
+    			GlobalControl.getControl().getStyle().setProperty(Style.COMPONENT_FOCUS_FOREGROUND, 
+    					new Integer(prev));
+    		}
+    		else{
+    			GlobalControl.getControl().getStyle().setProperty(Style.COMPONENT_FOREGROUND, 
+    					new Integer(prev));
+    		}
         	g.setClip(clip.x, clip.y, clip.width, clip.height);
         }
 	}
@@ -222,13 +223,20 @@ public class Button implements TextItem
 	public void pointerDraggedEventReturned(int x, int y){}
 	public void pointerPressedEvent(int x, int y){}
 	public void pointerPressedEventReturned(int x, int y){}
-	public void pointerReleasedEvent(int x, int y){}
-	public void pointerReleasedEventReturned(int x, int y){}
+	public void pointerReleasedEvent(int x, int y){
+		if(displayRect.contains(x, y, 0)){
+			keyPressedEvent(GlobalControl.getControl().
+					getMainDisplayCanvas().getKeyCode(Canvas.FIRE));
+		}
+	}
+	public void pointerReleasedEventReturned(int x, int y){
+		parent.pointerReleasedEventReturned(x, y);
+	}
 	public void repaint(Rectangle clip) 
 	{	
 		if(parent!=null)
         {
-            this.parent.repaint(displayRect);
+            this.parent.repaint(clip);
         }
 	}
 	
@@ -236,13 +244,14 @@ public class Button implements TextItem
 	{
         displayRect=rect;
         int rad=((Integer)GlobalControl.getControl().getStyle().getProperty(Style.BUTTON_CURVE_RADIUS)).intValue();
-        Rectangle dispRect=new Rectangle(displayRect.x+rad,displayRect.y-1,displayRect.width-(rad*2),displayRect.height);
+        Rectangle dispRect=new Rectangle(displayRect.x+rad-1,displayRect.y,displayRect.width-(rad*2)+2,displayRect.height);
         nameDisplayer.setDisplayRect(dispRect);
 	}
 
 	public void setParent(Item parent) 
 	{	
 		this.parent=parent;
+		nameDisplayer.setParent(this.parent);
 	}
 	public void setText(String text) {
 		nameDisplayer.setText(text);
@@ -257,7 +266,9 @@ public class Button implements TextItem
 	public Font getFont() {
 		return nameDisplayer.getFont();
 	}
-	public void setFont(Font font) {}
+	public void setFont(Font font) {
+		nameDisplayer.setFont(font);
+	}
 	public byte getAlignment() {
 		return nameDisplayer.getAlignment();
 	}
@@ -291,5 +302,10 @@ public class Button implements TextItem
 
 	public void setTextIndent(int indent) {
 		nameDisplayer.setTextIndent(indent);
+	}
+	public void moveRect(int dx, int dy) {
+		displayRect.x+=dx;
+		displayRect.y+=dy;
+		nameDisplayer.moveRect(dx, dy);
 	}
 }

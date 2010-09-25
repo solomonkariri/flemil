@@ -93,6 +93,8 @@ public class Panel implements Scrollable
 	int scrWid;
 	private boolean focusAll;
 	private Item defaultFocusItem;
+	private boolean dragged;
+	private int lastPointY;
     
     public boolean isHorScrolling() {
 		return horScrolling;
@@ -233,7 +235,8 @@ public class Panel implements Scrollable
         		}
         		if(position==children.size()-1)
         		{
-        			if(currentYStart>displayRect.y-availableHeight-topMargin+displayRect.height+bottomMargin)
+        			if(currentYStart>displayRect.y-availableHeight-topMargin+displayRect.height+bottomMargin
+        					&& !(parent instanceof Scrollable))
         			{
         				scrollItems(0,-GlobalControl.getPanelScrollSpeed());
         			}
@@ -277,7 +280,7 @@ public class Panel implements Scrollable
         		}
         		if(position==0)
         		{
-        			if(currentYStart<displayRect.y+topMargin)
+        			if(currentYStart<displayRect.y+topMargin && !(parent instanceof Scrollable))
         			{
         				scrollItems(0,GlobalControl.getPanelScrollSpeed());
         			}
@@ -342,7 +345,7 @@ public class Panel implements Scrollable
     }
     public void pointerReleasedEventReturned(int x,int y)
     {
-        
+    	parent.pointerReleasedEventReturned(x, y);
     }
     public void pointerDraggedEventReturned(int x,int y)
     {
@@ -350,21 +353,61 @@ public class Panel implements Scrollable
     }
     public void pointerPressedEvent(int x,int y)
     {
+    	dragged=false;
+    	if(vScrolling && verticalScrollBar!=null){
+    		if(verticalScrollBar.getDisplayRect().contains(x, y, 0)){
+    			verticalScrollBar.pointerPressedEvent(x, y);
+    		}
+    		else{
+    			lastPointY=y;
+        	}
+    	}
     }
     public void pointerReleasedEvent(int x,int y)
     {
+    	if(dragged)return;
+    	if(vScrolling && verticalScrollBar!=null){
+    		if(verticalScrollBar.getDisplayRect().contains(x, y, 0)){
+    			verticalScrollBar.pointerReleasedEvent(x, y);
+    			return;
+    		}
+    	}
+    	for(int i=0;i<children.size();i++){
+    		Item testItem=(Item)children.elementAt(i);
+    		if(testItem.getDisplayRect().contains(x, y, 0)){
+    			if(testItem.isFocusible()){
+    				currentlyFocussed.focusLost();
+        			currentlyFocussed=testItem;
+        			currentlyFocussed.focusGained();
+    			}
+    			scrollRectToVisible(testItem.getDisplayRect(),
+    					Scrollable.DIRECTION_X|Scrollable.DIRECTION_Y);
+    			testItem.pointerReleasedEvent(x, y);
+    		}
+    	}
     }
     public void pointerDraggedEvent(int x,int y)
     {
+    	dragged=true;
+    	if(!verticalScrollBar.getDisplayRect().contains(x, y, 0)){
+    		int diff=y-lastPointY;
+        	lastPointY=y;
+        	if(vScrolling){
+        		scrollItems(0, diff);
+        	}
+    	}
+    	else{
+    		verticalScrollBar.pointerDraggedEvent(x, y);
+    	}
     }
-    public void repaint(Rectangle clip)
+    public  void repaint(Rectangle clip)
     {
     	if(parent!=null)
     	{
     		parent.repaint(clip);
     	}
     }
-    public synchronized void paint(Graphics g,Rectangle clip)
+    public  void paint(Graphics g,Rectangle clip)
     {
     	Rectangle intersect=null;
         if((intersect=this.displayRect.calculateIntersection(clip))!=null)
@@ -382,14 +425,11 @@ public class Panel implements Scrollable
         		Item tempChild=(Item)children.elementAt(i);
         		tempChild.paint(g, intersect);
         	}
-        	if(hScrolling)
+        	if(hScrolling && horizontalScrollBar!=null)
         	{
-        		if(horizontalScrollBar!=null)
-        		{
-        			horizontalScrollBar.paint(g, intersect);
-        		}
+        		horizontalScrollBar.paint(g, intersect);
         	}
-        	if(vScrolling)
+        	if(vScrolling && verticalScrollBar!=null)
     		{
     			verticalScrollBar.paint(g, intersect);
     		}
@@ -494,6 +534,7 @@ public class Panel implements Scrollable
      */
     public synchronized void add(Item item)
     {
+    	if(currentlyFocussed!=null && !currentlyFocussed.isFocusible())currentlyFocussed=null;
     	if(currentlyFocussed==null && item.isFocusible())
     	{
     		currentlyFocussed=item;
@@ -501,6 +542,9 @@ public class Panel implements Scrollable
     	children.addElement(item);
     	item.setParent(this);
     	if(focussed && currentlyFocussed!=null){currentlyFocussed.focusGained();}
+    	if(currentlyFocussed==null){
+    		currentlyFocussed=item;
+    	}
     	layoutItems();
     }
     /**
@@ -508,6 +552,9 @@ public class Panel implements Scrollable
      */
     public synchronized void removeAll()
     {
+    	if(currentlyFocussed!=null){
+    		currentlyFocussed.focusLost();
+    	}
     	currentlyFocussed=null;
     	for(int i=0;i<children.size();i++)
     	{
@@ -515,6 +562,11 @@ public class Panel implements Scrollable
     	}
     	children.removeAllElements();
     	layoutItems();
+//    	new Thread(new Runnable() {
+//			public void run() {
+//				repaint(displayRect);				
+//			}
+//		}).start();
     }
     /**
      * Removes the Item passed to this method from this Panel
@@ -552,9 +604,9 @@ public class Panel implements Scrollable
     		remove((Item)children.elementAt(index));
     	}
     }
-    private synchronized void layoutItems()
+    private  void layoutItems()
     {
-    	if(children.isEmpty())return;
+    	if(children.isEmpty() || displayRect.width<=1)return;
     	hScrolling=vScrolling=false;
     	verticalScrollBar=horizontalScrollBar=null;
     	if(displayRect.width<=1)return;
@@ -641,7 +693,7 @@ public class Panel implements Scrollable
 				if(!vScrolling)
 				{
 					vScrolling=true;
-					scrWid=6;
+					scrWid=displayRect.width/30;
 					i=0;
 					trackY=getDisplayRect().y+topMargin;
 					tempStr.removeAllElements();
@@ -678,6 +730,7 @@ public class Panel implements Scrollable
     	tempStr.removeAllElements();
     	Runtime.getRuntime().gc();
     	layoutScrollers();
+    	repaint(displayRect);
     }
     private void layoutScrollers()
     {
@@ -711,8 +764,8 @@ public class Panel implements Scrollable
     		Rectangle rect=new Rectangle();
     		rect.x=displayRect.x;
     		rect.width=scrWidth;
-    		rect.y=displayRect.y+displayRect.height-6;
-    		rect.height=6;
+    		rect.y=displayRect.y+displayRect.height-displayRect.height/30;
+    		rect.height=displayRect.height/30;
     		horizontalScrollBar.setDisplayRect(rect);
     		horizontalScrollBar.setCurrentPoint(0);
     	}
@@ -749,22 +802,19 @@ public class Panel implements Scrollable
         		Item tmpItem=(Item)elements.nextElement();
         		if(hScrolling)
         		{
-        			tmpItem.getDisplayRect().x+=dx;
+        			tmpItem.moveRect(dx, 0);
         		}
         		if(vScrolling)
         		{
-        			tmpItem.getDisplayRect().y+=dy;
+        			tmpItem.moveRect(0, dy);
         		}
-        		//this call is necessary for panels within panels
-        		//to update their children's locations
-        		tmpItem.setDisplayRect(tmpItem.getDisplayRect());
         	}
-        	if(vScrolling)
+        	if(vScrolling && verticalScrollBar!=null)
     		{
     			currentYStart+=dy;
     			verticalScrollBar.setCurrentPoint(-(currentYStart-(displayRect.y+topMargin)));
     		}
-    		if(hScrolling)
+    		if(hScrolling && horizontalScrollBar!=null)
     		{
     			currentXStart+=dx;
     			horizontalScrollBar.setCurrentPoint(-(currentXStart-(displayRect.x+leftMargin)));
@@ -800,25 +850,6 @@ public class Panel implements Scrollable
 	}
 	public void scrollRectToVisible(Rectangle rect, int scrollDirection) 
 	{
-		//update the focussed item
-		Enumeration en=children.elements();
-		while(en.hasMoreElements())
-		{
-			Item it=(Item)en.nextElement();
-			if(it.getDisplayRect().calculateIntersection(rect)!=null)
-			{
-				if(currentlyFocussed!=null && currentlyFocussed!=it)
-				{
-					currentlyFocussed.focusLost();
-					currentlyFocussed=it;
-					if(focussed)
-					{
-						currentlyFocussed.focusGained();
-					}
-				}
-				break;
-			}
-		}
 		if((scrollDirection&Scrollable.DIRECTION_X)!=0)
 		{
 			if(!hScrolling && parent instanceof Scrollable)
@@ -867,15 +898,6 @@ public class Panel implements Scrollable
 				else if(rect.y+rect.height>displayRect.y+displayRect.height-bottomMargin-2)
 				{
 					diff=(rect.y+rect.height)-(displayRect.y+displayRect.height-bottomMargin-2);
-					if(rect.y-diff<displayRect.y+topMargin)
-					{
-						if(currentlyFocussed!=null && 
-								(currentlyFocussed.getDisplayRect().calculateIntersection(rect)==null ||
-										rect.height==currentlyFocussed.getDisplayRect().height))
-						{
-							diff-=(displayRect.y+topMargin)-(rect.y-diff);
-						}
-					}
 					scrollItems(0, -diff);
 				}
 				if(parent instanceof Scrollable && diff!=0)
@@ -889,5 +911,19 @@ public class Panel implements Scrollable
 	}
 	public boolean isFocussed() {
 		return focussed;
+	}
+	public void moveRect(int dx, int dy) {
+		displayRect.x+=dx;
+		displayRect.y+=dy;
+		for(int i=0;i<children.size();i++){
+			((Item)children.elementAt(i)).moveRect(dx, dy);
+		}
+	}
+	public void acrollContentsHorizontally(int change) {
+		// TODO Auto-generated method stub
+		
+	}
+	public void scrollContentsVertically(int change) {
+		scrollItems(0, change);
 	}
 }

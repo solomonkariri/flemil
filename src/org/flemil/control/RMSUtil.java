@@ -13,11 +13,14 @@ import javax.microedition.rms.RecordStoreException;
 import javax.microedition.rms.RecordStoreFullException;
 import javax.microedition.rms.RecordStoreNotFoundException;
 
+
+
+
 public class RMSUtil {
 	private static final String RMS_NAME="FLEMIL7896";
 	private static final String STYLE_RMS="FLE_STY";
 	private static final String STYLE_INDEX="FLE_STY_IND";
-	public static boolean saveStyle(Style style,String name)
+	public synchronized static boolean saveStyle(Style style,String name,String id,String owner)
 	{
 		try {
 			RecordStore libStore=RecordStore.openRecordStore(RMSUtil.RMS_NAME, true);
@@ -37,9 +40,11 @@ public class RMSUtil {
 						String read=dis.readUTF();
 						while(read!=null)
 						{
-							if(read.equals(name))
+							if(read.equals(id))
 							{
-								return false;
+								deleteStyle(id);
+								saveStyle(style, name, id, owner);
+								return true;
 							}
 							read=dis.readUTF();
 						}
@@ -52,7 +57,9 @@ public class RMSUtil {
 				ByteArrayOutputStream baaos=new ByteArrayOutputStream();
 				DataOutputStream dos=new DataOutputStream(baaos);
 				dos.writeUTF(RMSUtil.STYLE_INDEX);
+				dos.writeUTF(id);
 				dos.writeUTF(name);
+				dos.writeUTF(owner);
 				byte []dat=baaos.toByteArray();
 				libStore.addRecord(dat, 0, dat.length);
 				dos.close();
@@ -60,7 +67,7 @@ public class RMSUtil {
 				baaos=new ByteArrayOutputStream();
 				dos=new DataOutputStream(baaos);
 				dos.writeUTF(RMSUtil.STYLE_RMS);
-				dos.writeUTF(name);
+				dos.writeUTF(id);
 				dos.write(style.toByteArray());
 				dat=baaos.toByteArray();
 				libStore.addRecord(dat, 0, dat.length);
@@ -79,7 +86,9 @@ public class RMSUtil {
 					ByteArrayOutputStream baos=new ByteArrayOutputStream();
 					DataOutputStream dos=new DataOutputStream(baos);
 					dos.write(data);
+					dos.writeUTF(id);
 					dos.writeUTF(name);
+					dos.writeUTF(owner);
 					byte []dat=baos.toByteArray();
 					libStore.setRecord(i, dat, 0, dat.length);
 					break;
@@ -95,7 +104,7 @@ public class RMSUtil {
 					ByteArrayOutputStream baos=new ByteArrayOutputStream();
 					DataOutputStream dos=new DataOutputStream(baos);
 					dos.write(data);
-					dos.writeUTF(name);
+					dos.writeUTF(id);
 					dos.write(style.toByteArray());
 					byte []dat=baos.toByteArray();
 					libStore.setRecord(i, dat, 0, dat.length);
@@ -114,7 +123,7 @@ public class RMSUtil {
 			return false;
 		}
 	}
-	public static Vector getSavedStyleNames()
+	public synchronized static Vector getSavedStyleNames()
 	{
 		Vector saved=new Vector();
 		try {
@@ -132,6 +141,8 @@ public class RMSUtil {
 					while(read!=null)
 					{
 						saved.addElement(read);
+						saved.addElement(dis.readUTF());
+						saved.addElement(dis.readUTF());
 						read=dis.readUTF();
 					}
 				}
@@ -146,7 +157,7 @@ public class RMSUtil {
 		}
 		return saved;
 	}
-	public static Style getStyle(String name)
+	public synchronized static Style getStyle(String id)
 	{
 		Style style=null;
 		try {
@@ -161,7 +172,7 @@ public class RMSUtil {
 				if(rmsName.equals(RMSUtil.STYLE_RMS))
 				{
 					String read=dis.readUTF();
-					while(!read.equals(name))
+					while(!read.equals(id))
 					{
 						Style.getDefault().loadFromByteStream(dis);
 						read=dis.readUTF();
@@ -178,7 +189,7 @@ public class RMSUtil {
 		}
 		return style;
 	}
-	public static boolean deleteStyle(String name)
+	public synchronized static boolean deleteStyle(String id)
 	{
 		try {
 			RecordStore libStore=RecordStore.openRecordStore(RMSUtil.RMS_NAME, true);
@@ -199,9 +210,16 @@ public class RMSUtil {
 						String read=dis.readUTF();
 						while(read!=null)
 						{
-							if(!read.equals(name))
+							if(!read.equals(id))
 							{
 								dos.writeUTF(read);
+								dos.writeUTF(dis.readUTF());
+								dos.writeUTF(dis.readUTF());
+							}
+							else
+							{
+								dis.readUTF();
+								dis.readUTF();
 							}
 							read=dis.readUTF();
 						}
@@ -228,7 +246,7 @@ public class RMSUtil {
 						String read=dis.readUTF();
 						while(read!=null)
 						{
-							if(!read.equals(name))
+							if(!read.equals(id))
 							{
 								dos.writeUTF(read);
 								dos.write(Style.getDefault().loadFromByteStream(dis).toByteArray());

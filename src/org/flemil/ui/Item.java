@@ -223,4 +223,6 @@ public interface Item
     public void setFocusible(boolean focusible);
     
     public boolean isFocussed();
+    
+    public void moveRect(int dx,int dy);
 }

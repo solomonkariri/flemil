@@ -14,6 +14,7 @@ import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
 import org.flemil.event.ListSelectionListener;
 import org.flemil.event.MenuCommandListener;
+import org.flemil.i18n.LocaleManager;
 import org.flemil.ui.Item;
 import org.flemil.ui.TextItem;
 import org.flemil.util.Rectangle;
@@ -285,14 +286,26 @@ public class ComboBox implements TextItem {
     				getProperty(Style.COMPONENT_FOCUS_OUTLINE_COLOR)).intValue():
     					((Integer)GlobalControl.getControl().getStyle().
     				getProperty(Style.COMPONENT_OUTLINE_COLOR)).intValue());
-        	g.drawLine(displayRect.x+displayRect.width-nameDisplayer.getFont().getHeight()-2,
-        			displayRect.y, 
-        			displayRect.x+displayRect.width-nameDisplayer.getFont().getHeight()-2, 
-        			displayRect.y+displayRect.height);
-        	g.drawImage(downImage, 
-        			displayRect.x+displayRect.width-nameDisplayer.getFont().getHeight(), 
-        			displayRect.y+displayRect.height/2-downImage.getHeight()/2,
-        			Graphics.TOP|Graphics.LEFT);
+        	if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
+        		g.drawLine(displayRect.x+displayRect.width-nameDisplayer.getFont().getHeight()-2,
+            			displayRect.y, 
+            			displayRect.x+displayRect.width-nameDisplayer.getFont().getHeight()-2, 
+            			displayRect.y+displayRect.height);
+            	g.drawImage(downImage, 
+            			displayRect.x+displayRect.width-nameDisplayer.getFont().getHeight(), 
+            			displayRect.y+displayRect.height/2-downImage.getHeight()/2,
+            			Graphics.TOP|Graphics.LEFT);
+        	}
+        	else{
+        		g.drawLine(displayRect.x+nameDisplayer.getFont().getHeight()+2,
+            			displayRect.y, 
+            			displayRect.x+nameDisplayer.getFont().getHeight()+2, 
+            			displayRect.y+displayRect.height);
+            	g.drawImage(downImage, 
+            			displayRect.x+1, 
+            			displayRect.y+displayRect.height/2-downImage.getHeight()/2,
+            			Graphics.TOP|Graphics.LEFT);
+        	}
             g.setClip(clip.x, clip.y, clip.width, clip.height);
         }
 	}
@@ -301,13 +314,21 @@ public class ComboBox implements TextItem {
 
 	public void pointerDraggedEventReturned(int x, int y) {}
 
-	public void pointerPressedEvent(int x, int y) {}
+	public void pointerPressedEvent(int x, int y) {
+		
+	}
 
 	public void pointerPressedEventReturned(int x, int y) {}
 
-	public void pointerReleasedEvent(int x, int y) {}
-
-	public void pointerReleasedEventReturned(int x, int y) {}
+	public void pointerReleasedEvent(int x, int y){
+		if(displayRect.contains(x, y, 0)){
+			keyPressedEvent(GlobalControl.getControl().
+					getMainDisplayCanvas().getKeyCode(Canvas.FIRE));
+		}
+	}
+	public void pointerReleasedEventReturned(int x, int y){
+		parent.pointerReleasedEventReturned(x, y);
+	}
 
 	public void repaint(Rectangle clip) {
 		if(parent!=null)
@@ -326,11 +347,20 @@ public class ComboBox implements TextItem {
     		}catch(IOException ioe){ioe.printStackTrace();}
 		}
 		this.displayRect=rect;
-		nameDisplayer.setDisplayRect(new Rectangle(
-				displayRect.x,
-				displayRect.y,
-				displayRect.width-nameDisplayer.getFont().getHeight()-2,
-				displayRect.height));
+		if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
+			nameDisplayer.setDisplayRect(new Rectangle(
+					displayRect.x,
+					displayRect.y,
+					displayRect.width-nameDisplayer.getFont().getHeight()-2,
+					displayRect.height));
+		}
+		else{
+			nameDisplayer.setDisplayRect(new Rectangle(
+					displayRect.x+nameDisplayer.getFont().getHeight()+2,
+					displayRect.y,
+					displayRect.width-(nameDisplayer.getFont().getHeight()+2),
+					displayRect.height));
+		}
 	}
 	public void setFocusible(boolean focusible) {
 		this.focusible=focusible;
@@ -395,5 +425,16 @@ public class ComboBox implements TextItem {
 
 	public void setTextIndent(int indent) {
 		nameDisplayer.setTextIndent(indent);
+	}
+	public void moveRect(int dx, int dy) {
+		displayRect.x+=dx;
+		displayRect.y+=dy;
+		nameDisplayer.moveRect(dx, dy);
+	}
+
+	public void removeAll() {
+		currentObject=null;
+		elements.removeAllElements();
+		repaint(displayRect);
 	}
 }

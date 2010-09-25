@@ -7,6 +7,7 @@ import javax.microedition.lcdui.Graphics;
 import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
 import org.flemil.event.MenuCommandListener;
+import org.flemil.i18n.LocaleManager;
 import org.flemil.ui.Item;
 import org.flemil.ui.TextItem;
 import org.flemil.util.Rectangle;
@@ -55,23 +56,27 @@ public class CheckBox implements TextItem {
 	public void setSelectable(boolean selectable) {
 		this.selectable = selectable;
 	}
-	private void addMenuItems()
+	private synchronized void addMenuItems()
 	{
 		if(!selectable)return;
-		markItem=new MenuItem(selected?"Unmark":"Mark");
+		markItem=new MenuItem(selected?
+				LocaleManager.getTranslation("flemil.unmark"):
+				LocaleManager.getTranslation("flemil.mark"));
 		markItem.setListener(new MenuCommandListener(){
 
 			public void commandAction(MenuItem item) {
 				keyPressedEvent(
 						GlobalControl.getControl().getMainDisplayCanvas().getKeyCode(Canvas.FIRE));
-				markItem.setName(selected?"Unmark":"Mark");
+				markItem.setName(selected?
+						LocaleManager.getTranslation("flemil.unmark"):
+					LocaleManager.getTranslation("flemil.mark"));
 				repaint(GlobalControl.getControl().getCurrent().getMenuBarRect());
 			}
 		});
 		GlobalControl.getControl().getCurrent().getCurrentMenu().add(markItem);
 		repaint(GlobalControl.getControl().getCurrent().getMenuBarRect());
 	}
-	private void removeMenuItems()
+	private synchronized void removeMenuItems()
 	{
 		if(!selectable)return;if(markItem==null)return;
 		GlobalControl.getControl().getCurrent().getCurrentMenu().remove(markItem);
@@ -172,23 +177,45 @@ public class CheckBox implements TextItem {
     		g.drawRoundRect(displayRect.x, displayRect.y, 
     				displayRect.width-1, displayRect.height-1,
     				radius, radius);
-    		g.drawRoundRect(displayRect.x+2, displayRect.y+
-        			displayRect.height/2-testHei/2, 
-        			testHei,
-        			testHei,4,4);
-        	if(selected)
-        	{
-        		g.drawLine(displayRect.x+2, displayRect.y+
+    		if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
+    			g.drawRoundRect(displayRect.x+2, displayRect.y+
             			displayRect.height/2-testHei/2, 
-            			displayRect.x+2+testHei,
-            			displayRect.y+
-            			displayRect.height/2-testHei/2+testHei);
-        		g.drawLine(displayRect.x+2+testHei, displayRect.y+
+            			testHei,
+            			testHei,4,4);
+            	if(selected)
+            	{
+            		g.drawLine(displayRect.x+2, displayRect.y+
+                			displayRect.height/2-testHei/2, 
+                			displayRect.x+2+testHei,
+                			displayRect.y+
+                			displayRect.height/2-testHei/2+testHei);
+            		g.drawLine(displayRect.x+2+testHei, displayRect.y+
+                			displayRect.height/2-testHei/2, 
+                			displayRect.x+2,
+                			displayRect.y+
+                			displayRect.height/2-testHei/2+testHei);
+            	}
+    		}
+    		else{
+    			g.drawRoundRect(displayRect.x+displayRect.width-2-testHei,
+        				displayRect.y+
             			displayRect.height/2-testHei/2, 
-            			displayRect.x+2,
-            			displayRect.y+
-            			displayRect.height/2-testHei/2+testHei);
-        	}
+            			testHei,
+            			testHei,4,4);
+            	if(selected)
+            	{
+            		g.drawLine(displayRect.x+displayRect.width-2, displayRect.y+
+                			displayRect.height/2-testHei/2, 
+                			displayRect.x+displayRect.width-2-testHei,
+                			displayRect.y+
+                			displayRect.height/2-testHei/2+testHei);
+            		g.drawLine(displayRect.x+displayRect.width-2-testHei, displayRect.y+
+                			displayRect.height/2-testHei/2, 
+                			displayRect.x+displayRect.width-2,
+                			displayRect.y+
+                			displayRect.height/2-testHei/2+testHei);
+            	}
+    		}
         	nameDisplayer.paint(g, intersect);
             g.setClip(clip.x, clip.y, clip.width, clip.height);
         }
@@ -198,13 +225,21 @@ public class CheckBox implements TextItem {
 
 	public void pointerDraggedEventReturned(int x, int y) {}
 
-	public void pointerPressedEvent(int x, int y) {}
+	public void pointerPressedEvent(int x, int y) {
+		
+	}
 
 	public void pointerPressedEventReturned(int x, int y) {}
 
-	public void pointerReleasedEvent(int x, int y) {}
-
-	public void pointerReleasedEventReturned(int x, int y) {}
+	public void pointerReleasedEvent(int x, int y){
+		if(displayRect.contains(x, y, 0)){
+			keyPressedEvent(GlobalControl.getControl().
+					getMainDisplayCanvas().getKeyCode(Canvas.FIRE));
+		}
+	}
+	public void pointerReleasedEventReturned(int x, int y){
+		parent.pointerReleasedEventReturned(x, y);
+	}
 
 	public void repaint(Rectangle clip) {
 		if(parent!=null)
@@ -217,11 +252,20 @@ public class CheckBox implements TextItem {
 		this.displayRect=rect;
 		if(rect.width>nameDisplayer.getFont().getHeight())
 		{
-			nameDisplayer.setDisplayRect(new Rectangle(
-					displayRect.x+nameDisplayer.getFont().getHeight()+2,
-					displayRect.y,
-					displayRect.width-nameDisplayer.getFont().getHeight()+2,
-					displayRect.height));
+			if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
+				nameDisplayer.setDisplayRect(new Rectangle(
+						displayRect.x+nameDisplayer.getFont().getHeight()+2,
+						displayRect.y,
+						displayRect.width-nameDisplayer.getFont().getHeight()+2,
+						displayRect.height));
+			}
+			else{
+				nameDisplayer.setDisplayRect(new Rectangle(
+						displayRect.x,
+						displayRect.y,
+						displayRect.width-nameDisplayer.getFont().getHeight()-2,
+						displayRect.height));
+			}
 		}
 	}
 	/**
@@ -237,9 +281,11 @@ public class CheckBox implements TextItem {
 	 */
 	public void setSelected(boolean selected) {
 		this.selected = selected;
-		if(parent!=null){
+		if(markItem!=null)markItem.setName(selected?
+				LocaleManager.getTranslation("flemil.unmark"):
+					LocaleManager.getTranslation("flemil.mark"));
+		if(parent!=null && focussed){
 			repaint(displayRect);
-			if(markItem!=null)markItem.setName(selected?"Unmark":"Mark");
 			repaint(GlobalControl.getControl().getCurrent().getMenuBarRect());
 		}
 	}
@@ -303,5 +349,10 @@ public class CheckBox implements TextItem {
 
 	public void setTextIndent(int indent) {
 		nameDisplayer.setTextIndent(indent);
+	}
+	public void moveRect(int dx, int dy) {
+		displayRect.x+=dx;
+		displayRect.y+=dy;
+		nameDisplayer.moveRect(dx, dy);
 	}
 }

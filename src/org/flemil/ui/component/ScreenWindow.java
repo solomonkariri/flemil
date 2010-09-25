@@ -1,13 +1,16 @@
 package org.flemil.ui.component;
 
+import java.io.IOException;
 import java.util.Vector;
 
 import javax.microedition.lcdui.Font;
 import javax.microedition.lcdui.Graphics;
+import javax.microedition.lcdui.Image;
 import javax.microedition.lcdui.game.Sprite;
 
 import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
+import org.flemil.i18n.LocaleManager;
 import org.flemil.ui.Item;
 import org.flemil.ui.Window;
 import org.flemil.util.Rectangle;
@@ -58,6 +61,8 @@ public class ScreenWindow implements Window
 	private Menu currentMenu;
 	private Vector popups;
 	private PopUpWindow currentPopUp;
+	private Rectangle menuArrowRect;
+	private Image arrowImage;
     public boolean isFocusible() {
 		return focusible;
 	}
@@ -80,6 +85,7 @@ public class ScreenWindow implements Window
         menubarRect=new Rectangle();
         titlebarRect=new Rectangle();
         bodyRect=new Rectangle();
+        menuArrowRect=new Rectangle();
       //Initialize display rect
         displayRect=new Rectangle();
         titleWidth=((Font)GlobalControl.getControl().getStyle().getProperty(
@@ -88,7 +94,7 @@ public class ScreenWindow implements Window
         this.contentPane=new Panel();
         contentPane.setParent(this);
         //initialize the windows menu
-        menu=new Menu("Options");
+        menu=new Menu(LocaleManager.getTranslation("flemil.options"));
         currentMenu=menu;
         menu.setParent(this);
         popups=new Vector();
@@ -146,7 +152,6 @@ public class ScreenWindow implements Window
     }
     public void pointerReleasedEventReturned(int x,int y)
     {
-        
     }
     public void pointerDraggedEventReturned(int x,int y)
     {
@@ -154,11 +159,38 @@ public class ScreenWindow implements Window
     }
     public void pointerPressedEvent(int x,int y)
     {
-        contentPane.pointerPressedEvent(x, y);
+    	contentPane.pointerPressedEvent(x, y);
     }
     public void pointerReleasedEvent(int x,int y)
     {
-        contentPane.pointerReleasedEvent(x, y);
+    	if(!fullScreen && getMenuBarRect().contains(x, y, 0)){
+    		Rectangle testLeft=new Rectangle(menubarRect.x, menubarRect.y, 
+    				menubarRect.width/2, menubarRect.height);
+    		if(testLeft.contains(x, y, 0)){
+    			keyPressedEvent(-6);
+    		}
+    		else{
+    			keyPressedEvent(-7);
+    		}
+    	}
+    	else{
+    		if(currentMenu.isDisplaying()){
+    			currentMenu.pointerReleasedEvent(x, y);
+    		}
+    		else{
+    			if(currentPopUp!=null){
+    				currentPopUp.pointerReleasedEvent(x, y);
+    			}
+    			else{
+    				if(fullScreen && menuArrowRect.contains(x,y,0)){
+        				keyPressedEvent(-7);
+        			}
+        			else{
+        				contentPane.pointerReleasedEvent(x, y);
+        			}
+    			}
+    		}
+    	}
     }
     public void pointerDraggedEvent(int x,int y)
     {
@@ -166,7 +198,10 @@ public class ScreenWindow implements Window
     }
     public void repaint(Rectangle clip)
     {
-        GlobalControl.getControl().repaint(clip);
+    	Rectangle intersect=getDisplayRect().calculateIntersection(clip);
+    	if(intersect!=null){
+    		GlobalControl.getControl().repaint(intersect);
+    	}
     }
     public Menu getMenu()
     {
@@ -239,9 +274,16 @@ public class ScreenWindow implements Window
                         Style.WINDOW_TITLE_FONT));
                 if(scrolling)
                 {
-                	g.drawString(title, titlebarRect.x+titleIndent+2,
-                            titlebarRect.y+1,
-                            Graphics.TOP|Graphics.LEFT);
+                	if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
+                		g.drawString(title, titlebarRect.x+titleIndent+2,
+                                titlebarRect.y+1,
+                                Graphics.TOP|Graphics.LEFT);
+                	}
+                	else{
+                		g.drawString(title, titlebarRect.x+titlebarRect.width-2-titleIndent-titleWidth,
+                                titlebarRect.y+1,
+                                Graphics.TOP|Graphics.LEFT);
+                	}
                 }
                 else
                 {
@@ -293,6 +335,12 @@ public class ScreenWindow implements Window
         {
         	currentMenu.paint(g, clip);
         }
+        if(fullScreen){
+        	if(menuArrowRect.calculateIntersection(clip)!=null){
+        		g.drawImage(arrowImage, menuArrowRect.x, menuArrowRect.y,
+        				Graphics.TOP|Graphics.LEFT);
+        	}
+        }
     }
     public Rectangle getMinimumDisplayRect(int availWidth)
     {
@@ -307,10 +355,8 @@ public class ScreenWindow implements Window
     }
     public synchronized void setDisplayRect(Rectangle rect)
     {
-    	if(!rect.equals(displayRect))
-    	{
-    		displayRect=rect;
-    	}
+    	if(rect.width<=2)return;
+    	displayRect=rect;
     	//set the three rects respectively
         //title bar rect
         titlebarRect=new Rectangle();
@@ -340,7 +386,7 @@ public class ScreenWindow implements Window
             bodyRect.height=this.displayRect.height-
             	(titlebarRect.height+menubarRect.height);
         }
-        setCurrentMenuRect();
+        setMenuRect(currentMenu);
         contentPane.setDisplayRect(bodyRect);
       //set the display rect for any popup showing
         if(currentPopUp!=null)
@@ -360,8 +406,7 @@ public class ScreenWindow implements Window
         setTitle(getTitle());
         if(focussed)repaint(displayRect); 
     }
-    private void setCurrentMenuRect()
-    {
+    private void setMenuRect(Menu menu){
     	//set the display rect for the menu
         Rectangle menuRect=new Rectangle();
         menuRect.x=displayRect.x+
@@ -376,10 +421,10 @@ public class ScreenWindow implements Window
         spanRect.height=menuRect.height;
         //Display rect should always be after the draw start has been set to avoid conflicts 
 //        when calculating the rects for the menu items
-        currentMenu.setSpanRect(spanRect);
-        currentMenu.setAlignment(Menu.ALIGN_RIGHT);
-        currentMenu.setDrawStart(menuRect.y+menuRect.height);
-        currentMenu.setDisplayRect(menuRect);
+        menu.setSpanRect(spanRect);
+        menu.setAlignment(Menu.ALIGN_RIGHT);
+        menu.setDrawStart(menuRect.y+menuRect.height);
+        menu.setDisplayRect(menuRect);
     }
     public void focusLost()
     {
@@ -420,6 +465,16 @@ public class ScreenWindow implements Window
         	{
         		isMenuDisplaying=false;
         		currentMenu.focusLost();
+        	}
+        	menuArrowRect=new Rectangle(getDisplayRect().x+getDisplayRect().width-20,
+        			getDisplayRect().y+getDisplayRect().height-10, 
+        			10, 10);
+        	if(arrowImage==null){
+        		try
+        		{
+        			arrowImage=GlobalControl.getImageFactory().scaleImage(Image.createImage("/arrow.png"), 10,
+        					10, Sprite.TRANS_ROT270);
+        		}catch(IOException ioe){ioe.printStackTrace();}
         	}
         }
         setDisplayRect(displayRect);
@@ -529,7 +584,7 @@ public class ScreenWindow implements Window
     		if(currentPopUp!=null)currentPopUp.focusLost();
     		currentPopUp=window;
         	currentMenu=currentPopUp.getMenu();
-        	setCurrentMenuRect();
+        	setMenuRect(currentMenu);
         	popups.addElement(window);
         	//set the display rect for any popup showing
             if(currentPopUp!=null)
@@ -556,6 +611,7 @@ public class ScreenWindow implements Window
      */
     public synchronized void hidePopup(PopUpWindow popupWindow)
     {
+    	if(popupWindow==null)return;
     	popups.removeElement(popupWindow);
     	if(currentPopUp!=null && popupWindow==currentPopUp)
     	{
@@ -565,14 +621,14 @@ public class ScreenWindow implements Window
         	{
         		currentPopUp=(PopUpWindow)popups.elementAt(popups.size()-1);
             	currentMenu=currentPopUp.getMenu();
-            	setCurrentMenuRect();
+            	setMenuRect(currentMenu);
             	if(focussed)currentPopUp.focusGained();
         	}
         	else
         	{
         		currentPopUp=null;
         		currentMenu=menu;
-        	//	setCurrentMenuRect();
+        		setMenuRect(currentMenu);
         		contentPane.focusGained();
         	}
         	repaint(displayRect);
@@ -588,5 +644,10 @@ public class ScreenWindow implements Window
 	}
 	public boolean isFocussed() {
 		return focussed;
+	}
+	public void moveRect(int dx, int dy) {
+		displayRect.x+=dx;
+		displayRect.y+=dy;
+		getContentPane().moveRect(dx, dy);
 	}
 }

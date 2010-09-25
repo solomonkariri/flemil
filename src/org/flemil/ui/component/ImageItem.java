@@ -37,7 +37,7 @@ public class ImageItem implements Item
 	public ImageItem(Image image)
 	{
 		this.image=image;
-		displayRect=new Rectangle();
+		this.displayRect=new Rectangle();
 	}
 	public boolean isFocusible() {
 		return focusible;
@@ -49,7 +49,7 @@ public class ImageItem implements Item
 
 	public void focusGained() {
 		focussed=true;
-		repaint(displayRect);
+		repaint(this.displayRect);
 		if(listener!=null)
 		{
 			listener.eventFired(this, ImageItemListener.FOCUSS_GAINED);
@@ -58,7 +58,7 @@ public class ImageItem implements Item
 
 	public void focusLost() {
 		focussed=false;
-		repaint(displayRect);
+		repaint(this.displayRect);
 		if(listener!=null)
 		{
 			listener.eventFired(this, ImageItemListener.FOCUS_LOST);
@@ -72,10 +72,13 @@ public class ImageItem implements Item
 	public Rectangle getMinimumDisplayRect(int availWidth) {
 		if(this.image!=null)
 		{
-			if(availWidth>image.getWidth())
-				availWidth=image.getWidth();
-			int height=(image.getHeight()*availWidth)/image.getWidth();
-			return new Rectangle(0,0,availWidth,height);
+			if(resizeToFit){
+				int height=(image.getHeight()*availWidth)/image.getWidth();
+				return new Rectangle(0,0,availWidth,height);
+			}
+			else{
+				return new Rectangle(0, 0, availWidth, this.image.getHeight());
+			}
 		}
 		else
 		{
@@ -121,7 +124,7 @@ public class ImageItem implements Item
 
 	public void paint(Graphics g, Rectangle clip) 
 	{
-		if(displayRect.width<=1)return;
+		if(this.displayRect.width<=1)return;
 		Rectangle intersect=null;
         if((intersect=this.displayRect.calculateIntersection(clip))!=null)
         {
@@ -134,7 +137,7 @@ public class ImageItem implements Item
     				getProperty(Style.COMPONENT_BACKGROUND)).intValue());
         	if(paintBorder && !focussed)
     		{
-        		g.drawRoundRect(displayRect.x, displayRect.y, 
+        		g.drawRoundRect(this.displayRect.x, displayRect.y, 
         				displayRect.width-1, displayRect.height-1,
         				radius, radius);
     		}
@@ -168,6 +171,7 @@ public class ImageItem implements Item
 
 	public void pointerPressedEvent(int x, int y) 
 	{
+		
 	}
 
 	public void pointerPressedEventReturned(int x, int y) 
@@ -176,10 +180,20 @@ public class ImageItem implements Item
 
 	public void pointerReleasedEvent(int x, int y) 
 	{	
+		if(displayRect.contains(x, y, 0)){
+			if(listener!=null)
+    		{
+    			listener.eventFired(this, ImageItemListener.FIRE_KEY_PRESSED);
+    		}
+			else{
+				parent.pointerReleasedEventReturned(x, y);
+			}
+		}
 	}
 
 	public void pointerReleasedEventReturned(int x, int y) 
 	{
+		parent.pointerReleasedEventReturned(x, y);
 	}
 
 	public void repaint(Rectangle clip) 
@@ -191,15 +205,31 @@ public class ImageItem implements Item
 	}
 
 	public synchronized void setDisplayRect(Rectangle rect){
+		if(rect.width<=2)return;
+		if(Math.abs(rect.width-displayRect.width)<=2 
+				&& Math.abs(rect.height-displayRect.height)<=2)
+		{
+			this.displayRect.x=rect.x;
+			this.displayRect.y=rect.y;
+			return;
+		}
 		if((rect.height!=displayRect.height || rect.width!=displayRect.width)
 				&& resizeToFit && image!=null)
 		{
+			if(drawnImage!=null &&
+					drawnImage.getHeight()==rect.height && drawnImage.getWidth()==rect.width){
+				this.displayRect=rect;
+				return;
+			}
 			drawnImage=GlobalControl.getImageFactory().scaleImage(image, 
-					rect.width-2, rect.height-2, Sprite.TRANS_NONE);
+					rect.width, rect.height, Sprite.TRANS_NONE);
 		}
 		else if(drawnImage==null)
 		{
-			drawnImage=image;
+			if(resizeToFit)
+				drawnImage=Image.createImage(image);
+			else
+				drawnImage=image;
 		}
 		this.displayRect=rect;
 	}
@@ -249,5 +279,15 @@ public class ImageItem implements Item
 	}
 	public boolean isFocussed() {
 		return focussed;
+	}
+	public void setImage(Image image) {
+		this.image=image;
+		this.drawnImage=null;
+		this.displayRect.width=1;
+		GlobalControl.getControl().refreshLayout();
+	}
+	public void moveRect(int dx, int dy) {
+		displayRect.x+=dx;
+		displayRect.y+=dy;
 	}
 }

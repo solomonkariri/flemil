@@ -64,4 +64,7 @@ public interface Scrollable extends Item
 	 * @param horScrolling to allow horizontal scrolling and false therwise
 	 */
 	public void setHorScrolling(boolean horScrolling);
+	
+	public void scrollContentsVertically(int change);
+	public void acrollContentsHorizontally(int change);
 }

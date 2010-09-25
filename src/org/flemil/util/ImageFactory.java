@@ -119,21 +119,6 @@ public class ImageFactory
         //Initialize the CRC table only if this method is invoked
         //Free up memory fast
         Runtime.getRuntime().gc();
-        crcTable=new int[256];
-        int c=0;
-        int n=0,k=0;
-        for(n=0;n<256;n++)
-        {
-            c=n;
-            for(k=0;k<8;k++)
-            {
-                if((c&1)!=0)
-                    c=0xedb88320^(c>>>1);
-                else
-                    c=c>>>1;
-            }
-            crcTable[n]=c;
-        }
         Image testImage=Image.createImage(width, height);
         Graphics g=testImage.getGraphics();
         g.setColor(0xff0000);
@@ -452,8 +437,25 @@ public class ImageFactory
         Runtime.getRuntime().gc();
         return Image.createImage(data, 0, size);
     }
-    public int getCRC(byte []data,int start,int length)
+    public synchronized int getCRC(byte []data,int start,int length)
     {
+    	if(crcTable==null){
+    		crcTable=new int[256];
+            int c=0;
+            int n=0,k=0;
+            for(n=0;n<256;n++)
+            {
+                c=n;
+                for(k=0;k<8;k++)
+                {
+                    if((c&1)!=0)
+                        c=0xedb88320^(c>>>1);
+                    else
+                        c=c>>>1;
+                }
+                crcTable[n]=c;
+            }
+    	}
         int crc=0xffffffff;
         for(int n=start;n<start+length;n++)
         {
@@ -461,7 +463,7 @@ public class ImageFactory
         }
         return crc^0xffffffff;
     }
-    private byte[]getByteArrayFromInt(int value)
+    public byte[]getByteArrayFromInt(int value)
     {
         byte[] result=new byte[4];
         result[0]=(byte)(value>>>24);

@@ -7,6 +7,7 @@ import javax.microedition.lcdui.game.Sprite;
 import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
 import org.flemil.event.MenuCommandListener;
+import org.flemil.i18n.LocaleManager;
 import org.flemil.ui.Item;
 import org.flemil.util.Rectangle;
 
@@ -176,8 +177,16 @@ public class MenuItem implements Item
                                 getProperty(Style.MENU_ITEM_FOREGROUND)).intValue());
                         }
                         g.setFont((Font)GlobalControl.getControl().getStyle().getProperty(Style.MENU_ITEM_FONT));
-                        g.drawString(name, displayRect.x+nameIndent, displayRect.y+1,
-                                Graphics.TOP|Graphics.LEFT);
+                        if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
+                        	g.drawString(name, displayRect.x+nameIndent, displayRect.y+1,
+                                    Graphics.TOP|Graphics.LEFT);
+                        }
+                        else{
+                        	g.drawString(name, displayRect.x+displayRect.width-nameIndent-nameWidth-
+                            		GlobalControl.getControl().getMenuPopImage().getWidth(),
+                            		displayRect.y+1,
+                                    Graphics.TOP|Graphics.LEFT);
+                        }
                         g.setClip(displayRect.x, displayRect.y, 
                                 displayRect.width, displayRect.height);
                         g.drawRegion(GlobalControl.getControl().getMenuPopImage(), 
@@ -205,10 +214,17 @@ public class MenuItem implements Item
                                 getProperty(Style.MENU_ITEM_FOREGROUND)).intValue());
                         }
                         g.setFont((Font)GlobalControl.getControl().getStyle().getProperty(Style.MENU_ITEM_FONT));
-                        g.drawString(name, displayRect.x+nameIndent+
-                        		GlobalControl.getControl().getMenuPopImage().getWidth(),
-                                displayRect.y+1,
-                                Graphics.TOP|Graphics.LEFT);
+                        if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
+                        	g.drawString(name, displayRect.x+nameIndent+
+                            		GlobalControl.getControl().getMenuPopImage().getWidth(),
+                                    displayRect.y+1,
+                                    Graphics.TOP|Graphics.LEFT);
+                        }
+                        else{
+                        	g.drawString(name, displayRect.x+displayRect.width-nameWidth-nameIndent,
+                                    displayRect.y+1,
+                                    Graphics.TOP|Graphics.LEFT);
+                        }
                         g.setClip(displayRect.x, displayRect.y, 
                                 displayRect.width, displayRect.height);
                         g.drawImage(GlobalControl.getControl().getMenuPopImage(), 
@@ -265,9 +281,16 @@ public class MenuItem implements Item
                             getProperty(Style.MENU_ITEM_FOREGROUND)).intValue());
                     }
                     g.setFont((Font)GlobalControl.getControl().getStyle().getProperty(Style.MENU_ITEM_FONT));
-                    g.drawString(name, displayRect.x+nameIndent,
-                            displayRect.y+1,
-                            Graphics.TOP|Graphics.LEFT);
+                    if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
+                    	g.drawString(name, displayRect.x+nameIndent,
+                                displayRect.y+1,
+                                Graphics.TOP|Graphics.LEFT);
+                    }
+                    else{
+                    	g.drawString(name, displayRect.x+displayRect.width-nameWidth-nameIndent-2,
+                                displayRect.y+1,
+                                Graphics.TOP|Graphics.LEFT);
+                    }
                     g.setClip(clip.x, clip.y, clip.width, clip.height);
                 }
             }
@@ -379,5 +402,9 @@ public class MenuItem implements Item
     }
 	public boolean isFocussed() {
 		return focussed;
+	}
+	public void moveRect(int dx, int dy) {
+		displayRect.x+=dx;
+		displayRect.y+=dy;
 	}
 }

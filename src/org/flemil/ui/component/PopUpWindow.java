@@ -1,11 +1,13 @@
 package org.flemil.ui.component;
 
+import javax.microedition.lcdui.Canvas;
 import javax.microedition.lcdui.Font;
 import javax.microedition.lcdui.Graphics;
 import javax.microedition.lcdui.game.Sprite;
 
 import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
+import org.flemil.i18n.LocaleManager;
 import org.flemil.ui.Item;
 import org.flemil.ui.Window;
 import org.flemil.util.Rectangle;
@@ -71,7 +73,7 @@ public class PopUpWindow implements Window {
         bodyRect=new Rectangle();
     	this.contentPane=new Panel();
     	//initialize the windows menu
-        this.menu=new Menu("Options");
+        this.menu=new Menu(LocaleManager.getTranslation("flemil.options"));
         this.title=title;
         this.showTitleBar=showTitleBar;
         titleWidth=((Font)GlobalControl.getControl().getStyle().getProperty(
@@ -111,7 +113,11 @@ public class PopUpWindow implements Window {
     }
     public void pointerReleasedEventReturned(int x,int y)
     {
-        
+    	if(displayRect.contains(x, y, 0)){
+    		((GlobalControl.MainCanvas)GlobalControl.getControl().
+    				getMainDisplayCanvas()).keyPressed(
+    						GlobalControl.getControl().getMainDisplayCanvas().getKeyCode(Canvas.FIRE));
+    	}
     }
     public void pointerDraggedEventReturned(int x,int y)
     {
@@ -246,9 +252,16 @@ public class PopUpWindow implements Window {
                         Style.WINDOW_TITLE_FONT));
                 if(scrolling)
                 {
-                	g.drawString(title, titlebarRect.x+titleIndent+2,
-                            titlebarRect.y+1,
-                            Graphics.TOP|Graphics.LEFT);
+                	if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
+                		g.drawString(title, titlebarRect.x+titleIndent+2,
+                                titlebarRect.y+1,
+                                Graphics.TOP|Graphics.LEFT);
+                	}
+                	else{
+                		g.drawString(title, titlebarRect.x+titlebarRect.width-2-titleIndent-titleWidth,
+                                titlebarRect.y+1,
+                                Graphics.TOP|Graphics.LEFT);
+                	}
                 }
                 else
                 {
@@ -429,5 +442,10 @@ public class PopUpWindow implements Window {
 	}
 	public boolean isFocussed() {
 		return focussed;
+	}
+	public void moveRect(int dx, int dy) {
+		displayRect.x+=dx;
+		displayRect.y+=dy;
+		getContentPane().moveRect(dx, dy);
 	}
 }

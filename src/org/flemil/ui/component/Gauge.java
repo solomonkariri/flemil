@@ -39,7 +39,6 @@ public class Gauge implements Item{
 	public Gauge()
 	{
 		this(0, 100, 1,50, true);
-		displayRect=new Rectangle();
 	}
 	/**
 	 * Creates a new Gauge with the specified attributes
@@ -52,6 +51,7 @@ public class Gauge implements Item{
 	 */
 	public Gauge(int minValue,int maxValue,int stepSize,int value,boolean interactive)
 	{
+		displayRect=new Rectangle();
 		this.min=minValue;
 		this.max=maxValue==Gauge.INDEFINITE?100:maxValue;
 		this.stepSize=stepSize;
@@ -300,5 +300,9 @@ public class Gauge implements Item{
 	}
 	public boolean isFocussed() {
 		return focussed;
+	}
+	public void moveRect(int dx, int dy) {
+		displayRect.x+=dx;
+		displayRect.y+=dy;
 	}
 }

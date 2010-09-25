@@ -117,10 +117,6 @@ public class GlobalControl
     private static Image themeEdgeForeground;
 	//the global control for this application
     private static GlobalControl control;
-    //the current display clip
-    private static Rectangle currentClip;
-    //the lock for repaint operations
-    private Object repaintLock=new Object();
     //the variable to keep track of the scrolling speed for elements
     private static int itemTextScrollSpeed=3;
     //variable to manipulate scroll speeds of items in a panel
@@ -128,7 +124,8 @@ public class GlobalControl
     
     //variable for whether fading is enabled
     private boolean fading;
-	private boolean settingStyle;
+	private boolean refreshingStyle;
+	private boolean settingLayout;
     /**
      * Creates a new GlobalControl for the given Midlet having the given default
      * style
@@ -147,8 +144,6 @@ public class GlobalControl
         displayArea=new Rectangle();
         displayArea.width=mainCanvas.getWidth();
         displayArea.height=mainCanvas.getHeight();
-        //initialize the current clip
-        currentClip=new Rectangle();
         globalStyle=Style.getDefault();
         initBGrounds();
         initControlsBGrounds();
@@ -448,11 +443,8 @@ public class GlobalControl
      */
     public synchronized void setStyle(Style style)
     {
-    	settingStyle=true;
         globalStyle=style;
         refreshStyle();
-        settingStyle=false;
-        repaint(displayArea);
     }
     /**
      * Returns the Canvas that is being used to display all the items in the application.
@@ -469,12 +461,9 @@ public class GlobalControl
      * call this method in your code but should call the repaint(Rectangle) method instead
      * @see #repaint(Rectangle)
      */
-    public void repaint()
+    public synchronized void repaint()
     {
-    	synchronized (repaintLock) 
-    	{
-	        repaint(displayArea);
-		}
+    	repaint(displayArea);
     }
     /**
      * Repaints the section of the application that intersects with the Rectangle that is passed to
@@ -483,20 +472,17 @@ public class GlobalControl
      * 
      * @param rect the section or Rectangle to be repainted
      */
-    public void repaint(Rectangle rect)
+    public synchronized void repaint(Rectangle rect)
     {
-    	if(rect.width<=1 || settingStyle)return;
-    	synchronized (repaintLock) {
-    		currentClip=rect;
-	    	if(layout==GlobalControl.LANDSCAPE_LAYOUT)
-	    	{
-	    		mainCanvas.repaint(getWidth()-rect.y-rect.height,rect.x,rect.height,rect.width);
-	    	}
-	    	else
-	    	{
-	    		mainCanvas.repaint(rect.x,rect.y,rect.width,rect.height);
-	    	}
-		}
+    	if(refreshingStyle || settingLayout)return;
+    	if(layout==GlobalControl.LANDSCAPE_LAYOUT)
+    	{
+    		mainCanvas.repaint(getWidth()-rect.y-rect.height,rect.x,rect.height,rect.width);
+    	}
+    	else
+    	{
+    		mainCanvas.repaint(rect.x,rect.y,rect.width,rect.height);
+    	}
     }
     /**
      * Returns the ImageRectangle in use for this application. You should make 
@@ -526,57 +512,58 @@ public class GlobalControl
     {
         return mainCanvas.getHeight();
     }
-    private void paint(Graphics g)
+    private synchronized void paint(Graphics g)
     {
-    	if(settingStyle)return;
-    	synchronized (repaintLock){
+    	Rectangle currentClip=new Rectangle();
+    	if(layout==LANDSCAPE_LAYOUT)
+    	{
+    		currentClip.x=g.getClipY();
+    		currentClip.y=displayArea.height-g.getClipX()-g.getClipWidth();
+    		currentClip.width=g.getClipHeight();
+    		currentClip.height=g.getClipWidth();
+    	}
+    	else
+    	{
+    		currentClip.x=g.getClipX();
+    		currentClip.y=g.getClipY();
+    		currentClip.width=g.getClipWidth();
+    		currentClip.height=g.getClipHeight();
+    		if(g.getClipHeight()>displayArea.height){
+    			currentClip.height=displayArea.height;
+    		}
+    	}
+    	//Clean up memory first
+    	Runtime.getRuntime().gc();
+    	//Draw on the offs screen image
+    	//paint the image on graphics accordingly
+    	Graphics gImg=bufferImg.getGraphics();
+
+    	//Draw the main WindowImpl
+    	if(currentWindow!=null)
+    	{
+    		currentWindow.paint(gImg,currentClip); 
+    	}
+    	//Draw alerts if any is active
+    	//Draw notification if any is active
+    	try
+    	{
     		if(layout==LANDSCAPE_LAYOUT)
     		{
-    			if(currentClip.height!=g.getClipWidth() || 
-    					currentClip.width!=g.getClipHeight())
-    			{
-    				currentClip=new Rectangle(displayArea.x,displayArea.y,displayArea.width,displayArea.height);
-    			}
+    			g.drawRegion(bufferImg, currentClip.x, currentClip.y, currentClip.width, currentClip.height,
+    					Sprite.TRANS_ROT90, 
+    					g.getClipX(), g.getClipY(), Graphics.TOP|Graphics.LEFT);
     		}
     		else
     		{
-    			if(currentClip.height!=g.getClipHeight() ||
-    					currentClip.width!=g.getClipWidth())
-    			{
-    				currentClip=new Rectangle(displayArea.x,displayArea.y,displayArea.width,displayArea.height);
-    			}
+    			g.drawRegion(bufferImg, currentClip.x, currentClip.y, currentClip.width, currentClip.height,
+    					Sprite.TRANS_NONE, 
+    					currentClip.x, currentClip.y, Graphics.TOP|Graphics.LEFT);
     		}
-    		//Clean up memory first
-            Runtime.getRuntime().gc();
-            //Draw on the offs screen image
-            //paint the image on graphics accordingly
-            Graphics gImg=bufferImg.getGraphics();
-            
-            //Draw the main WindowImpl
-            if(currentWindow!=null)
-            {
-                currentWindow.paint(gImg,currentClip);
-            }
-            //Draw alerts if any is active
-            //Draw notification if any is active
-            try
-            {
-            	if(layout==LANDSCAPE_LAYOUT)
-                {
-                    g.drawRegion(bufferImg, currentClip.x, currentClip.y, currentClip.width, currentClip.height,
-                            Sprite.TRANS_ROT90, 
-                            getWidth()-currentClip.y-currentClip.height, currentClip.x, Graphics.TOP|Graphics.LEFT);
-                }
-                else
-                {
-                    g.drawRegion(bufferImg, currentClip.x, currentClip.y, currentClip.width, currentClip.height,
-                            Sprite.TRANS_NONE, 
-                            currentClip.x, currentClip.y, Graphics.TOP|Graphics.LEFT);
-                }
-            }catch(IllegalArgumentException iae){}
-            //Clean up memory after
-            Runtime.getRuntime().gc();
-		}
+    	}catch(IllegalArgumentException iae){
+    		iae.printStackTrace();
+    	}
+    	//Clean up memory after
+    	Runtime.getRuntime().gc();
     }
     /**
      * Sets the ScreenWindow that is being currently displayed to the user.
@@ -604,15 +591,8 @@ public class GlobalControl
         bufferImg=Image.createImage(displayArea.width, displayArea.height);
         //Set the default layout
         currentWindow=window;
-        setLayout(layout);
-        //Set the current windows display rect
-        Rectangle windowRect=new Rectangle();
-        windowRect.x=displayArea.x;
-        windowRect.y=displayArea.y;
-        windowRect.width=displayArea.width;
-        windowRect.height=displayArea.height;
-        if(!currentWindow.getDisplayRect().equals(windowRect)){
-        	currentWindow.setDisplayRect(windowRect);
+        if(!currentWindow.getDisplayRect().equals(displayArea)){
+        	setLayout(layout);
         }
         //Send a focus alert to component to initiate auto scrolling
         currentWindow.focusGained();
@@ -630,6 +610,7 @@ public class GlobalControl
      */
     private synchronized void refreshStyle()
     {
+    	refreshingStyle=true;
     	initBGrounds();
     	initControlsBGrounds();
     	initThemeForeground();
@@ -638,20 +619,9 @@ public class GlobalControl
     	{
     		currentWindow.setDisplayRect(displayArea);
     	}
-    	refreshLayout();
-    }
-    /**
-     * Refreshes the layout of the items in the whole application. You should call this
-     *  method only when very necessary to do so. It is not likely or recommended to call
-     *   this method unless you are implementing your own custom items.
-     */
-    public void refreshLayout()
-    {
-    	if(currentWindow!=null)
-    	{
-    		currentWindow.setDisplayRect(displayArea);
-    		repaint(displayArea);
-    	}
+    	setLayout(layout);
+    	refreshingStyle=false;
+    	repaint(displayArea);
     }
     public void keyRepeatedEventReturned(int keyCode)
     {
@@ -745,9 +715,29 @@ public class GlobalControl
     }
     public void pointerReleasedEvent(int x,int y)
     {
+    	if(layout==LANDSCAPE_LAYOUT)
+        {
+            int tmp=x;
+            x=y;
+            y=displayArea.height-tmp;
+        }
+        if(currentWindow!=null)
+        {
+            currentWindow.pointerReleasedEvent(x, y);
+        }
     }
     public void pointerDraggedEvent(int x,int y)
     {
+    	if(layout==LANDSCAPE_LAYOUT)
+        {
+            int tmp=x;
+            x=y;
+            y=displayArea.height-tmp;
+        }
+        if(currentWindow!=null)
+        {
+            currentWindow.pointerDraggedEvent(x, y);
+        }
     }
     /**
      * Returns the current layout or orientation being used by the application. The return value is either
@@ -769,44 +759,39 @@ public class GlobalControl
      */
     public void setLayout(byte layout)
     {
-    	settingStyle=true;
-    	synchronized (repaintLock) {
-    		byte oldLayout=this.layout;
-    		this.layout=layout;
-    		if(layout!=oldLayout)
-            {
-                if(currentWindow!=null)
-                {
-                    currentWindow.focusLost();
-                }
-                int temp=displayArea.width;
-                displayArea.width=displayArea.height;
-                displayArea.height=temp;
-                bufferImg=Image.createImage(displayArea.width, displayArea.height);
-                setFading(fading);
-            }
-            if(currentWindow!=null)
-            {
-            	currentWindow.focusLost();
-                //Update the current windows display rect
-                Rectangle windowRect=new Rectangle();
-                windowRect.x=displayArea.x;
-                windowRect.y=displayArea.y;
-                windowRect.width=displayArea.width;
-                windowRect.height=displayArea.height;
-                if(!currentWindow.getDisplayRect().equals(windowRect)){
-                	currentWindow.setDisplayRect(windowRect);
-                	initThemeForeground();
-                }
-                //Send a focus alarm to component to initiate auto scrolling
-                currentWindow.focusGained();
-            }
-            //Clean up any previously used memory
-            Runtime.getRuntime().gc();
-            repaint(displayArea);
-		}
-    	settingStyle=false;
-    	repaint(displayArea);
+    	settingLayout=true;
+    	byte oldLayout=this.layout;
+		this.layout=layout;
+		if(layout!=oldLayout)
+        {
+            int temp=displayArea.width;
+            displayArea.width=displayArea.height;
+            displayArea.height=temp;
+            bufferImg=Image.createImage(displayArea.width, displayArea.height);
+        }
+		setFading(fading);
+		if(currentWindow!=null)
+        {
+            currentWindow.focusLost();
+        }
+        if(currentWindow!=null)
+        {
+        	currentWindow.focusLost();
+            //Update the current windows display rect
+            Rectangle windowRect=new Rectangle();
+            windowRect.x=displayArea.x;
+            windowRect.y=displayArea.y;
+            windowRect.width=displayArea.width;
+            windowRect.height=displayArea.height;
+            currentWindow.setDisplayRect(windowRect);
+        }
+        initThemeForeground();
+        //Clean up any previously used memory
+        Runtime.getRuntime().gc();
+        settingLayout=false;
+        if(currentWindow!=null){
+        	currentWindow.focusGained();
+        }
     }
     /**
      * Returns the Display instance being currently used by the application.
@@ -900,7 +885,18 @@ public class GlobalControl
 	public boolean isFading() {
 		return fading;
 	}
-	class MainCanvas extends Canvas
+	
+	private void sizeChanged(int newWidth,int newHeight){
+		if(layout==GlobalControl.LANDSCAPE_LAYOUT){
+    		displayArea=new Rectangle(0, 0, newHeight, newWidth);
+    	}
+    	else{
+    		displayArea=new Rectangle(0, 0, newWidth, newHeight);
+    	}
+    	bufferImg=Image.createImage(displayArea.width, displayArea.height);
+    	refreshLayout();
+	}
+	public class MainCanvas extends Canvas
     {
         public MainCanvas()
         {
@@ -908,12 +904,10 @@ public class GlobalControl
         }
         public void paint(Graphics g)
         {
-        	synchronized (repaintLock) {
-        		if(currentWindow!=null)
-        		{
-        			GlobalControl.this.paint(g);
-        		}
-			}
+        	if(currentWindow!=null)
+    		{
+    			GlobalControl.this.paint(g);
+    		}
         }
         public void keyPressed(int keyCode)
         {
@@ -946,5 +940,12 @@ public class GlobalControl
         {
             pointerDraggedEvent(x, y);
         }
+        public void sizeChanged(int newWidth,int newHeight)
+        {
+        	GlobalControl.this.sizeChanged(newWidth, newHeight);
+        }
     }
+	public void refreshLayout() {
+		setLayout(layout);
+	}
 }

@@ -12,6 +12,7 @@ import javax.microedition.lcdui.game.Sprite;
 import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
 import org.flemil.event.MenuListener;
+import org.flemil.i18n.LocaleManager;
 import org.flemil.ui.Item;
 import org.flemil.ui.Window;
 import org.flemil.util.Rectangle;
@@ -83,8 +84,6 @@ public class Menu implements Item
     private Rectangle currentView;
     private boolean paintBorder=true;
     private boolean focusible=true;
-    private Object addLock=new Object();
-    boolean adding=false;
     private MenuListener menuListener;
     
     public boolean isFocusible() {
@@ -131,7 +130,7 @@ public class Menu implements Item
      * if it is then it gives it the special appearance of being like the main menu
      * else it sets the items as the left and the right items
      */
-    private synchronized void organizeItems()
+    private void organizeItems()
     {
     	//this method checks the parent to see if its a window
     	//if the parent is a window, then it sets the left item, else it leaves the items intact
@@ -251,7 +250,7 @@ public class Menu implements Item
      * Used to check whether this menu is currently displayed, that is, popped up
      * @return true if displaying and false otherwise
      */
-    public synchronized boolean isDisplaying()
+    public boolean isDisplaying()
     {
         return displaying;
     }
@@ -261,7 +260,7 @@ public class Menu implements Item
      */
     public void remove(MenuItem item)
     {
-    	//first we move the left and right items back to entries
+		//first we move the left and right items back to entries
     	if(rightItem!=null)
     	{
     		entries.addElement(rightItem);
@@ -303,6 +302,8 @@ public class Menu implements Item
     		currentItem=null;
     	}
     	entries.removeAllElements();
+    	leftItem=null;
+    	rightItem=null;
         organizeItems();
         //make the topmost item currently focused and visible
         scrollToTop();
@@ -347,6 +348,7 @@ public class Menu implements Item
             {
                 mappings.remove(it);
                 entries.removeElement(it);
+                organizeItems();
                 scrollToTop();
                 resetItemRects();
                 break;
@@ -372,69 +374,55 @@ public class Menu implements Item
     public void add(Menu menu)throws IllegalArgumentException
     {
     	if(currentItem!=null)currentItem.focusLost();
-    	synchronized(addLock)
+		if(parent==null)
     	{
-    		while (adding) {
-				try {
-					addLock.wait();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-				addLock.notifyAll();
-			}
-    		adding=true;
-    		if(parent==null)
-        	{
-        		throw new IllegalStateException("You cannot add a submenu " +
-        				"to a menu before setting the parent menus parent");
-        	}
-        	//first we move the left and right items back to entries
-        	if(rightItem!=null)
-        	{
-        		entries.addElement(rightItem);
-        		rightItem=null;
-        	}
-        	if(leftItem!=null)
-        	{
-        		entries.addElement(leftItem);
-        		leftItem=null;
-        	}
-            menu.setParent(this);
-            //set the alignment of the incoming menu
-            switch(this.alignment)
-            {
-                case Menu.ALIGN_LEFT:
-                    menu.setAlignment(Menu.ALIGN_RIGHT);
-                    break;
-                case Menu.ALIGN_RIGHT:
-                    menu.setAlignment(Menu.ALIGN_LEFT);
-                    break;
-            }
-            //Add a new sub menu item to the main menu
-            MenuItem it=new MenuItem(menu.getName(),MenuItem.TYPE_POPUP_ITEM);
-            //add a mapping to the mappings table
-            mappings.put(it, menu);
-            it.setParent(this);
-            it.setAlignment(this.alignment);
-            entries.addElement(it);
-            //rearrange the current menu contents
-            organizeItems();
-            //scroll to the topmost item
-            scrollToTop();
-            //Recalculate the display rects for items if redisplaying
-            resetItemRects();
-            if(displaying)
-            {
-                repaint(currentView);
-                if(this.parent instanceof Window)
-                {
-                	repaint(((Window)this.parent).getMenuBarRect());
-                }
-            }
-            adding=false;
-            addLock.notifyAll();
-            if(parent!=null)parent.repaint(parent.getDisplayRect());
+    		throw new IllegalStateException("You cannot add a submenu " +
+    				"to a menu before setting the parent menus parent");
     	}
+    	//first we move the left and right items back to entries
+    	if(rightItem!=null)
+    	{
+    		entries.addElement(rightItem);
+    		rightItem=null;
+    	}
+    	if(leftItem!=null)
+    	{
+    		entries.addElement(leftItem);
+    		leftItem=null;
+    	}
+        menu.setParent(this);
+        //set the alignment of the incoming menu
+        switch(this.alignment)
+        {
+            case Menu.ALIGN_LEFT:
+                menu.setAlignment(Menu.ALIGN_RIGHT);
+                break;
+            case Menu.ALIGN_RIGHT:
+                menu.setAlignment(Menu.ALIGN_LEFT);
+                break;
+        }
+        //Add a new sub menu item to the main menu
+        MenuItem it=new MenuItem(menu.getName(),MenuItem.TYPE_POPUP_ITEM);
+        //add a mapping to the mappings table
+        mappings.put(it, menu);
+        it.setParent(this);
+        it.setAlignment(this.alignment);
+        entries.addElement(it);
+        //rearrange the current menu contents
+        organizeItems();
+        //scroll to the topmost item
+        scrollToTop();
+        //Recalculate the display rects for items if redisplaying
+        resetItemRects();
+        if(displaying)
+        {
+            repaint(currentView);
+            if(this.parent instanceof Window)
+            {
+            	repaint(((Window)this.parent).getMenuBarRect());
+            }
+        }
+        if(parent!=null)parent.repaint(parent.getDisplayRect());
     }
     /**
      * Adds a menu item into this menu
@@ -443,51 +431,37 @@ public class Menu implements Item
     public void add(MenuItem item)
     {
     	if(currentItem!=null)currentItem.focusLost();
-    	synchronized(addLock)
-    	{
-    		while (adding) {
-				try {
-					addLock.wait();
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-				addLock.notifyAll();
-			}
-    		adding=true;
-    		if(parent instanceof Window && this.name.equals(item.getName()))
-    		{
-    			throw new IllegalArgumentException("You cannot have a menu item with the same name as the menu for the main window");
-    		}
-    		//first we move the left and right items back to entries
-    		if(rightItem!=null)
-    		{
-    			entries.addElement(rightItem);
-    			rightItem=null;
-    		}
-    		if(leftItem!=null)
-    		{
-    			entries.addElement(leftItem);
-    			leftItem=null;
-    		}
-    		item.setParent(this);
-    		//Add the item to the entries
-    		entries.addElement(item);
-    		organizeItems();
-    		scrollToTop();
-    		//Recalculate the display rects for items if redisplaying
-    		resetItemRects();
-    		if(displaying)
-    		{
-    			repaint(currentView);
-    		}
-    		if(this.parent instanceof Window)
-			{
-				repaint(((Window)this.parent).getMenuBarRect());
-			}
-    		adding=false;
-    		addLock.notifyAll();
-    		if(parent!=null)parent.repaint(parent.getDisplayRect());
-    	}
+		if(parent instanceof Window && this.name.equals(item.getName()))
+		{
+			throw new IllegalArgumentException("You cannot have a menu item with the same name as the menu for the main window");
+		}
+		//first we move the left and right items back to entries
+		if(rightItem!=null)
+		{
+			entries.addElement(rightItem);
+			rightItem=null;
+		}
+		if(leftItem!=null)
+		{
+			entries.addElement(leftItem);
+			leftItem=null;
+		}
+		item.setParent(this);
+		//Add the item to the entries
+		entries.addElement(item);
+		organizeItems();
+		scrollToTop();
+		//Recalculate the display rects for items if redisplaying
+		resetItemRects();
+		if(displaying)
+		{
+			repaint(currentView);
+		}
+		if(this.parent instanceof Window)
+		{
+			repaint(((Window)this.parent).getMenuBarRect());
+		}
+		if(parent!=null)parent.repaint(parent.getDisplayRect());
     }
     void setAlignment(byte align)
     {
@@ -683,17 +657,19 @@ public class Menu implements Item
     private void resetItemRects()
     {
         //if display rect is not send then return
-        if(displayRect.width<2 || entries.size()==0)
+        if(displayRect.width<2 || entries.isEmpty() || spanRect.height<=2)
         {
             return;
         }
         //Set the display rects for the menu items respecively
         Rectangle tmpRect=new Rectangle();
         tmpRect.x=displayRect.x+1;
-        tmpRect.height=GlobalControl.getControl().getMenuItemBGround().getHeight();
+        tmpRect.height=GlobalControl.getControl().getMenuBarBGround().getHeight();
         tmpRect.width=displayRect.width-2;
+        
+        int itemHeight=GlobalControl.getControl().getMenuItemBGround().getHeight();
         //Set the number of displayable menu items
-        displayable=(spanRect.height-2)/(tmpRect.height);
+        displayable=(spanRect.height-2)/itemHeight;
         //The starting point x for all items
         //Set whether scrolling is necessary
         int size=entries.size();
@@ -708,13 +684,13 @@ public class Menu implements Item
             Rectangle tmpR=new Rectangle();
             tmpR.x=tmpRect.x;
             tmpR.width=tmpRect.width;
-            tmpR.height=tmpRect.height/2;
-            tmpR.y=spanRect.y+spanRect.height-(tmpRect.height*displayable);
+            tmpR.height=itemHeight/2;
+            tmpR.y=spanRect.y+spanRect.height-(itemHeight*displayable);
             scrolls[0].setDisplayRect(tmpR);
             tmpR=new Rectangle();
             tmpR.x=tmpRect.x;
             tmpR.width=tmpRect.width;
-            tmpR.height=tmpRect.height/2;
+            tmpR.height=itemHeight/2;
             tmpR.y=spanRect.y+spanRect.height-tmpR.height;
             scrolls[1].setDisplayRect(tmpR);
         }
@@ -723,6 +699,7 @@ public class Menu implements Item
         	currentlyVisible=size;
         	if(scroll)
         	{
+        		topIndex=size-1;
         		scroll=false;
                 scrolls=null;
                 Runtime.getRuntime().gc();
@@ -833,94 +810,21 @@ public class Menu implements Item
     }
     public void pointerPressedEventReturned(int x,int y)
     {
-     /*   if(!displayRect.contains(x, y,0))
-        {
-            if(parent!=null)
-            {
-                parent.pointerPressedEventReturned(x, y);
-            }
-        }
-        else
-        {
-            //if scrolling check whether the event should scroll
-            if(scroll)
-            {
-                if(scrolls[0].getDisplayRect().contains(x, y,0))
-                {
-                    processKey(GlobalControl.getControl().getMainDisplayCanvas().getKeyCode(Canvas.DOWN));
-                    return;
-                }
-                else if(scrolls[1].getDisplayRect().contains(x, y,0))
-                {
-                    processKey(GlobalControl.getControl().getMainDisplayCanvas().getKeyCode(Canvas.UP));
-                    return;
-                }
-            }
-            //search wheteher the pointer corresponds to an item
-            Enumeration  en=entries.elements();
-            MenuItem testItem=null;
-            while(en.hasMoreElements())
-            {
-                testItem=(MenuItem)en.nextElement();
-                if(testItem.getDisplayRect().contains(x, y,0))
-                {
-                    //if the selected item is a popup make it the currently selected
-                    if(testItem.getType()==MenuItem.TYPE_POPUP_ITEM)
-                    {
-                        //Make the selected item the current
-                        currentItem.focusLost();
-                        testItem.focusGained();
-                        currentItem=testItem;
-                        //calculate the change in scroll index
-                        int diff=selectedIndex-entries.indexOf(testItem);
-                        int diff2=currentlyVisible-scrIndex;
-                        if(diff2>diff)
-                        {
-                            scrIndex+=diff2-diff;
-                        }else
-                        {
-                            scrIndex+=diff-diff2;
-                        }
-                        if(activeSubmenu!=null)
-                        {
-                            activeSubmenu.focusLost();
-                            activeSubmenu=null;
-                        }
-                        else
-                        {
-                            showSubMenu(testItem);
-                        }
-                    }
-                    else
-                    {
-                        itemSelected();
-                        if(testItem.getListener()!=null)
-                        {
-                            testItem.getListener().
-                                    commandAction(testItem);
-                        }
-                        if(parent!=null && parent instanceof Menu)
-                        {
-                            ((Menu)parent).itemSelected();
-                        }
-                    }
-                }
-            }
-        }*/
+    	
     }
     public void pointerPressedEvent(int x,int y)
-    {
-        if(activeSubmenu!=null)
-        {
-            activeSubmenu.pointerPressedEvent(x, y);
-        }
-        else
-        {
-            pointerPressedEventReturned(x, y);
-        }
+    { 
     }
     public void pointerReleasedEvent(int x,int y)
     {
+    	if(activeSubmenu!=null)
+        {
+            activeSubmenu.pointerReleasedEvent(x, y);
+        }
+        else
+        {
+            pointerReleasedEventReturned(x, y);
+        }
     }
     public void pointerDraggedEvent(int x,int y)
     {
@@ -930,6 +834,41 @@ public class Menu implements Item
     }
     public void pointerReleasedEventReturned(int x,int y)
     {
+    	if(currentView.contains(x, y, 0)){
+    		if(scrolls!=null && scrolls.length==2 && scroll){
+    			if(scrolls[0]!=null && scrolls[0].getDisplayRect().contains(x, y, 0)){
+        			keyPressedEvent(
+        					GlobalControl.getControl().getMainDisplayCanvas().getKeyCode(Canvas.UP));
+        			return;
+        		}
+        		else if(scrolls[1]!=null && scrolls[1].getDisplayRect().contains(x, y, 0)){
+        			keyPressedEvent(
+        					GlobalControl.getControl().getMainDisplayCanvas().getKeyCode(Canvas.DOWN));
+        			return;
+        		}
+    		}
+    		currentItem.focusLost();
+    		for(int i=topIndex;i>=0;i--){
+    			MenuItem item=(MenuItem)entries.elementAt(i);
+    			if(item.getDisplayRect().contains(x, y, 0)){
+    				currentItem=item;
+    				currentItem.focusGained();
+    				int itemIndex=entries.indexOf(currentItem);
+    				scrIndex=topIndex-itemIndex;
+    				keyPressedEvent(
+        					GlobalControl.getControl().getMainDisplayCanvas().getKeyCode(Canvas.FIRE));
+    				return;
+    			}
+    		}
+    	}
+    	else{
+    		focusLost();
+    		displaying=false;
+    		if(parent!=null && parent instanceof Menu){
+    			((Menu)parent).activeSubmenu=null;
+    		}
+    		repaint(GlobalControl.getControl().getDisplayArea());
+    	}
     }
     public Rectangle getDisplayRect()
     {
@@ -1043,20 +982,22 @@ public class Menu implements Item
     				if(GlobalControl.getControl().getLayout()==GlobalControl.PORTRAIT_LAYOUT)
     				{
     					g.setClip(barRect.x, barRect.y, barRect.width/2, barRect.height);
-        				g.drawString("Cancel", barRect.x+1, barRect.y+1, Graphics.TOP|Graphics.LEFT);
+        				g.drawString(LocaleManager.getTranslation("flemil.cancel"),
+        						barRect.x+1, barRect.y+1, Graphics.TOP|Graphics.LEFT);
     				}
     				int wid=((Font)GlobalControl.getControl().getStyle().getProperty(Style.MENU_BAR_FONT))
-    				.stringWidth("Select");
+    				.stringWidth(LocaleManager.getTranslation("flemil.select"));
     				int diff=wid-barRect.width/2-3;
     				g.setClip(barRect.x+barRect.width/2+2, barRect.y, barRect.width/2, barRect.height);
     				if(diff>0)
     				{
-    					g.drawString("Select", barRect.x+barRect.width/2+2, 
+    					g.drawString(LocaleManager.getTranslation("flemil.select"), barRect.x+barRect.width/2+2, 
     							barRect.y+1, Graphics.TOP|Graphics.LEFT);
     				}
     				else
     				{
-    					g.drawString("Select", barRect.x+barRect.width-2-wid, 
+    					g.drawString(LocaleManager.getTranslation("flemil.select"),
+    							barRect.x+barRect.width-2-wid, 
     							barRect.y+1, Graphics.TOP|Graphics.LEFT);
     				}
     			}
@@ -1080,16 +1021,18 @@ public class Menu implements Item
             						i, intersect.y, Graphics.TOP|Graphics.LEFT);
             			}
             			int wid=((Font)GlobalControl.getControl().getStyle().getProperty(Style.MENU_BAR_FONT))
-            			.stringWidth("Cancel");
+            			.stringWidth(LocaleManager.getTranslation("flemil.cancel"));
             			int diff=wid-cancItemRect.width-3;
             			if(diff>0)
             			{
-            				g.drawString("Cancel", cancItemRect.x+2, 
+            				g.drawString(LocaleManager.getTranslation("flemil.cancel"),
+            						cancItemRect.x+2, 
             						cancItemRect.y+1, Graphics.TOP|Graphics.LEFT);
             			}
             			else
             			{
-            				g.drawString("Cancel", cancItemRect.x+cancItemRect.width-2-wid, 
+            				g.drawString(LocaleManager.getTranslation("flemil.cancel"),
+            						cancItemRect.x+cancItemRect.width-2-wid, 
             						cancItemRect.y+1, Graphics.TOP|Graphics.LEFT);
             			}
             		}
@@ -1170,8 +1113,11 @@ public class Menu implements Item
     }
     public void setDisplayRect(Rectangle rect)
     {
+    	if(rect.width<=1){
+    		return;
+    	}
         displayRect=rect;
-        if(entries.size()<=0)
+        if(entries.isEmpty())
         {
             return;
         }
@@ -1236,10 +1182,20 @@ public class Menu implements Item
     {
     	if(keyCode==-7)//this is the right soft key
     	{	
+    		if(entries.isEmpty()){
+    			if(rightItem!=null){
+    				if(rightItem!=null && rightItem.getListener()!=null)
+        			{
+        				rightItem.getListener().commandAction(rightItem);
+        			}
+    			}
+    			return;
+    		}
     		if(!displaying)
     		{
     			focusGained();
-    			if(rightItem!=null && rightItem.getName()!="Options")
+    			if(rightItem!=null && rightItem.getName()
+    					!=LocaleManager.getTranslation("flemil.options"))
     			{
     				keyPressedEvent(GlobalControl.getControl().getMainDisplayCanvas().getKeyCode(
         					Canvas.FIRE));
@@ -1420,5 +1376,12 @@ public class Menu implements Item
 	}
 	public boolean isFocussed() {
 		return displaying;
+	}
+	public void moveRect(int dx, int dy) {
+		displayRect.x+=dx;
+		displayRect.y+=dy;
+		for(int i=0;i<entries.size();i++){
+			((Item)entries.elementAt(i)).moveRect(dx, dy);
+		}
 	}
 }

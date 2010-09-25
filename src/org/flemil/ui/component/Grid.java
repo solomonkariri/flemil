@@ -5,6 +5,7 @@ import javax.microedition.lcdui.Graphics;
 
 import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
+import org.flemil.i18n.LocaleManager;
 import org.flemil.ui.Item;
 import org.flemil.ui.Scrollable;
 import org.flemil.util.Rectangle;
@@ -192,7 +193,15 @@ public class Grid implements Item
 	}
 	public void setColumnsDistribution(int[] distrib)
 	{
-		this.distrib=distrib;
+		if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
+			this.distrib=distrib;
+		}
+		else{
+			this.distrib=new int[distrib.length];
+			for(int i=distrib.length-1;i>=0;i--){
+				this.distrib[distrib.length-i-1]=distrib[i];
+			}
+		}
 		colWidsSet=true;
 		layoutItems();
 	}
@@ -206,13 +215,25 @@ public class Grid implements Item
 	}
 	public int getSelectedColumn()
 	{
-		return currentCol;
+		if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
+			return currentCol;
+		}
+		else{
+			return cols-currentCol-1;
+		}
 	}
 	public void setSelectedCell(int row,int col){
 		if(currentItem!=null)currentItem.focusLost();
-		currentItem=items[row][col];
-		currentRow=row;
-		currentCol=col;
+		if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
+			currentItem=items[row][col];
+			currentRow=row;
+			currentCol=col;
+		}
+		else{
+			currentItem=items[row][cols-col-1];
+			currentRow=row;
+			currentCol=cols-col-1;
+		}
 		if(focussed){
 			currentItem.focusGained();
 		}
@@ -264,7 +285,12 @@ public class Grid implements Item
 	}
 	
 	public Item getItemAt(int row,int col){
-		return items[row][col];
+		if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
+			return items[row][col];
+		}
+		else{
+			return items[row][cols-col-1];
+		}
 	}
 	
 	public Item getParent() {
@@ -287,35 +313,66 @@ public class Grid implements Item
 	 * and so on.
 	 * @param item the Item to be added to this Grid
 	 */
-	public void add(Item item)
+	public synchronized void add(Item item)
 	{
 		outer: for(int i=0;i<items.length;i++)
 		{
-			for(int j=0;j<items[i].length;j++)
-			{
-				if(items[i][j]==null)
+			if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
+				for(int j=0;j<items[i].length;j++)
 				{
-					items[i][j]=item;
-					itemsCount++;
-					items[i][j].setParent(this);
-					if(currentItem==null)
+					if(items[i][j]==null)
 					{
-						switch (selectionMode) {
-						case Grid.CELL_SELECTION:
-							if(item.isFocusible())
-							{
+						items[i][j]=item;
+						itemsCount++;
+						items[i][j].setParent(this);
+						if(currentItem==null)
+						{
+							switch (selectionMode) {
+							case Grid.CELL_SELECTION:
+								if(item.isFocusible())
+								{
+									currentItem=item;
+									currentRow=i;currentCol=j;
+								}
+								break;
+							case Grid.ROW_SELECTION:
+							case Grid.COL_SELECTION:
 								currentItem=item;
 								currentRow=i;currentCol=j;
+								break;
 							}
-							break;
-						case Grid.ROW_SELECTION:
-						case Grid.COL_SELECTION:
-							currentItem=item;
-							currentRow=i;currentCol=j;
-							break;
 						}
+						break outer;
 					}
-					break outer;
+				}
+			}
+			else{
+				for(int j=cols-1;j>=0;j--)
+				{
+					if(items[i][j]==null)
+					{
+						items[i][j]=item;
+						itemsCount++;
+						items[i][j].setParent(this);
+						if(currentItem==null)
+						{
+							switch (selectionMode) {
+							case Grid.CELL_SELECTION:
+								if(item.isFocusible())
+								{
+									currentItem=item;
+									currentRow=i;currentCol=j;
+								}
+								break;
+							case Grid.ROW_SELECTION:
+							case Grid.COL_SELECTION:
+								currentItem=item;
+								currentRow=i;currentCol=j;
+								break;
+							}
+						}
+						break outer;
+					}
 				}
 			}
 		}
@@ -329,22 +386,36 @@ public class Grid implements Item
 	 * @param row  the row from which to delete a cmponent
 	 * @param col the column from which to delete an item
 	 */
-	public void remove(int row,int col)
+	public synchronized void remove(int row,int col)
 	{
-		if(currentItem==items[row][col])
-		{
-			currentItem=null;
-			if(col<items[0].length-1)
+		if(LocaleManager.getTextDirection()==LocaleManager.getTextDirection()){
+			if(currentItem==items[row][col])
 			{
-				currentItem=items[row][col+1];
+				currentItem=null;
+				if(col<items[0].length-1)
+				{
+					currentItem=items[row][col+1];
+				}
+				else if(col==items[0].length-1 && items[0].length>1)
+				{
+					currentItem=items[row][col-1];
+				}
 			}
-			else if(col==items[0].length-1 && items[0].length>1)
-			{
-				currentItem=items[row][col-1];
-			}
+			items[row][col]=null;
+			GlobalControl.getControl().refreshLayout();
 		}
-		items[row][col]=null;
-		GlobalControl.getControl().refreshLayout();
+		else{
+			if(currentItem==items[row][cols-col-1])
+			{
+				currentItem=null;
+				if(cols-col-1<items[0].length-1)
+				{
+					currentItem=items[row][col+col];
+				}
+			}
+			items[row][cols-col-1]=null;
+			GlobalControl.getControl().refreshLayout();
+		}
 	}
 	public void keyPressedEvent(int keyCode) {
 		if(currentItem!=null)
@@ -370,10 +441,36 @@ public class Grid implements Item
 				{
 					int previousRow=currentRow;
 					while(currentRow<items.length-1 && 
-	            			items[currentRow+1][currentCol]!=null &&
-	        				!items[currentRow+1][currentCol].isFocusible())
+	            			items[currentRow+1][currentCol]!=null)
 	        		{
-	        			currentRow++;
+						 if(!items[currentRow+1][currentCol].isFocusible()){
+							 boolean test=false;
+							 for(int i=currentCol-1;i>=0;i--){
+								 if(items[currentRow+1][i].isFocusible()){
+									 currentCol=i;
+									 test=true;
+									 break;
+								 }
+							 }
+							 if(!test){
+								 for(int i=currentCol+1;i<items[0].length;i++){
+									 if(items[currentRow+1][i].isFocusible()){
+										 currentCol=i;
+										 test=true;
+										 break;
+									 }
+								 } 
+							 }
+							 if(!test){
+								 currentRow++; 
+							 }
+							 else{
+								 break;
+							 }
+						 }
+						 else{
+							 break;
+						 }
 	        		}
 	        		if(currentRow<items.length-1 && items[currentRow+1][currentCol]!=null)
 	        		{
@@ -431,10 +528,36 @@ public class Grid implements Item
 				case Grid.CELL_SELECTION:
 				{
 					int previousRow=currentRow;
-					while(currentRow>0 && items[currentRow-1][currentCol]!=null
-	        				&& !items[currentRow-1][currentCol].isFocusible())
+					while(currentRow>0 && items[currentRow-1][currentCol]!=null)
 	        		{
-	        			currentRow--;
+						if(!items[currentRow-1][currentCol].isFocusible()){
+							 boolean test=false;
+							 for(int i=currentCol-1;i>=0;i--){
+								 if(items[currentRow-1][i].isFocusible()){
+									 currentCol=i;
+									 test=true;
+									 break;
+								 }
+							 }
+							 if(!test){
+								 for(int i=currentCol+1;i<items[0].length;i++){
+									 if(items[currentRow-1][i].isFocusible()){
+										 currentCol=i;
+										 test=true;
+										 break;
+									 }
+								 } 
+							 }
+							 if(!test){
+								 currentRow--; 
+							 }
+							 else{
+								 break;
+							 }
+						 }
+						 else{
+							 break;
+						 }
 	        		}
 	        		if(currentRow>0 && items[currentRow-1][currentCol]!=null)
 	        		{
@@ -734,13 +857,35 @@ public class Grid implements Item
 
 	public void pointerDraggedEventReturned(int x, int y) {}
 
-	public void pointerPressedEvent(int x, int y) {}
+	public void pointerPressedEvent(int x, int y) {
+	}
 
 	public void pointerPressedEventReturned(int x, int y) {}
 
-	public void pointerReleasedEvent(int x, int y) {}
+	public void pointerReleasedEvent(int x, int y) {
+		if(displayRect.contains(x, y, 0)){
+			for(int i=0;i<rows;i++){
+				for(int j=0;j<cols;j++){
+					Item testItem=getItemAt(i, j);
+					if(testItem.getDisplayRect().contains(x, y, 0)){
+						if(testItem.isFocusible()){
+							currentItem.focusLost();
+							currentItem=testItem;
+							currentRow=i;
+							currentCol=j;
+							currentItem.focusGained();
+						}
+						testItem.pointerReleasedEvent(x, y);
+						return;
+					}
+				}
+			}
+		}
+	}
 
-	public void pointerReleasedEventReturned(int x, int y) {}
+	public void pointerReleasedEventReturned(int x, int y) {
+		parent.pointerReleasedEventReturned(x, y);
+	}
 
 	public void repaint(Rectangle clip) {
 		if(parent!=null)
@@ -749,7 +894,7 @@ public class Grid implements Item
 		}
 	}
 
-	public void setDisplayRect(Rectangle rect) {
+	public synchronized void setDisplayRect(Rectangle rect) {
 		this.displayRect=rect;
 		layoutItems();
 	}
@@ -780,5 +925,22 @@ public class Grid implements Item
 	}
 	public boolean isFocussed() {
 		return focussed;
+	}
+	public void moveRect(int dx, int dy) {
+		displayRect.x+=dx;
+		displayRect.y+=dy;
+		for(int i=0;i<rows;i++){
+			for(int j=0;j<cols;j++){
+				if(items[i][j]!=null){
+					items[i][j].moveRect(dx, dy);
+				}
+			}
+		}
+	}
+	public int getRowCount() {
+		return rows;
+	}
+	public int getColCount() {
+		return cols;
 	}
 }

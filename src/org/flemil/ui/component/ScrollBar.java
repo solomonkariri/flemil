@@ -7,6 +7,7 @@ import javax.microedition.lcdui.game.Sprite;
 import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
 import org.flemil.ui.Item;
+import org.flemil.ui.Scrollable;
 import org.flemil.util.ImageFactory;
 import org.flemil.util.Rectangle;
 
@@ -38,6 +39,7 @@ public class ScrollBar implements Item
 	private int knobSize=1;
 	private boolean paintBorder=true;
 	private Image fgImage;
+	private int lastPointY;
 	
 	
 	public boolean isPaintBorder() {
@@ -169,12 +171,62 @@ public class ScrollBar implements Item
             g.setClip(clip.x, clip.y, clip.width, clip.height);
         }
 	}
-	public void pointerDraggedEvent(int x, int y) {}
+	public void pointerDraggedEvent(int x, int y) {
+		int knobTop=(currentPoint*displayRect.height)/(this.requiredSize-availableSize);
+		Rectangle knobRect=new Rectangle(displayRect.x, 
+				displayRect.y+knobTop, displayRect.width, 
+				knobSize);
+		if(knobRect.contains(x, y, 0)){
+			int diff=y-lastPointY;
+			lastPointY=y;
+			if(parent!=null){
+				int displacement=diff*requiredSize/availableSize;
+				((Scrollable)parent).scrollContentsVertically(-displacement);
+			}
+		}
+	}
 	public void pointerDraggedEventReturned(int x, int y) {}
-	public void pointerPressedEvent(int x, int y) {}
+	public void pointerPressedEvent(int x, int y) {
+		lastPointY=y;
+	}
 	public void pointerPressedEventReturned(int x, int y) {}
-	public void pointerReleasedEvent(int x, int y) {}
-	public void pointerReleasedEventReturned(int x, int y) {}
+	public void pointerReleasedEvent(int x, int y) {
+		if(displayRect.contains(x, y, 0)){
+			if(orientation==ScrollBar.VERTICAL_ORIENTATION){
+				int requiredSize=this.requiredSize-availableSize;
+				int knobTop=(currentPoint*displayRect.height)/(this.requiredSize-availableSize);
+				Rectangle knobRect=new Rectangle(displayRect.x, 
+						displayRect.y+knobTop, displayRect.width, 
+						knobSize);
+				if(knobRect.contains(x, y, 0)){
+					return;
+				}
+				else{
+					if(parent!=null && (parent instanceof Scrollable)){
+						int scrollablePanelDistance=(requiredSize-availableSize);
+						int scrollableBarDistance=displayRect.height-knobSize;
+						if(y<=displayRect.y+knobTop){
+							int topGap=y-displayRect.y;
+							int remainingTop=knobRect.y-displayRect.y;
+							int unscrolledTop=((remainingTop)*scrollablePanelDistance)/scrollableBarDistance;
+													int scrollHeight=((remainingTop-topGap)*unscrolledTop)/remainingTop+2;
+													((Scrollable)parent).scrollContentsVertically(scrollHeight);
+						}
+						else{
+							int bottomGap=displayRect.y+displayRect.height-y;
+							int remainingBottom=((displayRect.y+displayRect.height)-(knobRect.y+knobRect.height));
+							int unscrolledBottom=(remainingBottom*scrollablePanelDistance)/scrollableBarDistance;
+													int scrollHeight=((remainingBottom-bottomGap)*unscrolledBottom)/remainingBottom+2;
+													((Scrollable)parent).scrollContentsVertically(-scrollHeight);
+						}
+					}
+				}
+			}
+		}
+	}
+	public void pointerReleasedEventReturned(int x, int y) {
+		parent.pointerReleasedEventReturned(x, y);
+	}
 	public void repaint(Rectangle clip) {
 		if(parent!=null)
 		{
@@ -195,6 +247,7 @@ public class ScrollBar implements Item
 	 * the Item that uses this ScrollBar
 	 */
 	public void setAvailableSize(int availableSize) {
+		if(availableSize==0)availableSize=1;
 		this.availableSize = availableSize;
 	}
 
@@ -214,6 +267,7 @@ public class ScrollBar implements Item
 	 * Scrollable that uses this ScrollBar
 	 */
 	public void setRequiredSize(int requiredSize) {
+		if(requiredSize==0)requiredSize=1;
 		this.requiredSize = requiredSize;
 	}
 
@@ -234,5 +288,9 @@ public class ScrollBar implements Item
 
 	public boolean isFocussed() {
 		return false;
+	}
+	public void moveRect(int dx, int dy) {
+		displayRect.x+=dx;
+		displayRect.y+=dy;
 	}
 }

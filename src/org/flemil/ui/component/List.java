@@ -78,7 +78,7 @@ public class List implements Item {
 	 * Adds an Item to the end of the list
 	 * @param item the Item to be added to the List
 	 */
-	public void add(Item item)
+	public synchronized void add(Item item)
 	{
 		if(currentItem==null)
     	{
@@ -89,7 +89,7 @@ public class List implements Item {
     	currentItem=(Item)elements.elementAt(0);
     	item.setParent(this);
     	layoutItems();
-    	if(focussed && currentItem!=null){
+    	if(focussed && currentItem!=null && currentItem.getDisplayRect()!=null){
     		visualizeRect(currentItem.getDisplayRect());
     		currentItem.focusGained();
     	}
@@ -107,7 +107,7 @@ public class List implements Item {
 	 * Removes the item passed to this method from this List
 	 * @param item the Item to be removed from this List
 	 */
-	public void remove(Item item)
+	public synchronized void remove(Item item)
 	{
     	elements.removeElement(item);
     	item.setParent(null);
@@ -126,7 +126,7 @@ public class List implements Item {
     	}
     	GlobalControl.getControl().refreshLayout();
 	}
-	public void removeAll()
+	public synchronized void removeAll()
 	{
 		topIndex=0;
 		visualIndex=0;
@@ -144,7 +144,7 @@ public class List implements Item {
 	 * Removes the Item at the index passed to this method from this List
 	 * @param index the index of the Item to be removed from this List
 	 */
-	public void remove(int index)
+	public synchronized void remove(int index)
 	{
 		remove((Item)elements.elementAt(index));
 	}
@@ -227,27 +227,29 @@ public class List implements Item {
 	}
 	public void focusGained() {
 		focussed=true;
-		if(currentItem!=null)
-		{
-			currentItem.focusGained();
-		}
-		if(parent instanceof Scrollable)
-		{
-			Rectangle visualRect=null;
-			if(topIndex==0){
-				visualRect=new Rectangle(((Item)elements.elementAt(
-						topIndex)).getDisplayRect());
-				visualRect.y+=2;
+		if(!elements.isEmpty()){
+			if(currentItem!=null)
+			{
+				currentItem.focusGained();
 			}
-			else{
-				visualRect=new Rectangle(((Item)elements.elementAt(
-						topIndex+displayable-1)).getDisplayRect());
-				visualRect.y-=2;
+			if(parent instanceof Scrollable)
+			{
+				Rectangle visualRect=null;
+				if(topIndex==0){
+					visualRect=new Rectangle(((Item)elements.elementAt(
+							topIndex)).getDisplayRect());
+					visualRect.y+=2;
+				}
+				else{
+					visualRect=new Rectangle(((Item)elements.elementAt(
+							topIndex+displayable-1)).getDisplayRect());
+					visualRect.y-=2;
+				}
+				((Scrollable) parent).scrollRectToVisible(
+						visualRect, Scrollable.DIRECTION_Y);
 			}
-			((Scrollable) parent).scrollRectToVisible(
-					visualRect, Scrollable.DIRECTION_Y);
+			repaint(displayRect);
 		}
-		repaint(displayRect);
 	}
 
 	public void focusLost() {
@@ -310,7 +312,7 @@ public class List implements Item {
 	
 	private void visualizeRect(Rectangle rect)
 	{
-		if(currentItem!=null)
+		if(currentItem!=null && parent!=null)
 		{
 			if(rect.y<parent.getDisplayRect().y)
 			{
@@ -451,15 +453,37 @@ public class List implements Item {
 	}
 
 	public void pointerPressedEvent(int x, int y) {
+		
 	}
 
 	public void pointerPressedEventReturned(int x, int y) {
+		if(listener!=null)
+    	{
+    		listener.itemSelected(this);
+    	}
 	}
 
 	public void pointerReleasedEvent(int x, int y) {
+		for(int i=topIndex;i<topIndex+displayable;i++){
+			Item testItem=(Item)elements.elementAt(i);
+			if(testItem.getDisplayRect().contains(x, y, 0)){
+				if(testItem.isFocusible()){
+					currentItem.focusLost();
+					currentItem=testItem;
+					visualIndex=i-topIndex;
+					currentItem.focusGained();
+				}
+				testItem.pointerReleasedEvent(x, y);
+				return;
+			}
+		}
 	}
 
 	public void pointerReleasedEventReturned(int x, int y) {
+		if(displayRect.contains(x, y, 0)){
+			keyPressedEvent(GlobalControl.getControl().
+					getMainDisplayCanvas().getKeyCode(Canvas.FIRE));
+		}
 	}
 
 	public void repaint(Rectangle clip) {
@@ -526,5 +550,12 @@ public class List implements Item {
 	}
 	public boolean isFocussed() {
 		return focussed;
+	}
+	public void moveRect(int dx, int dy) {
+		displayRect.x+=dx;
+		displayRect.y+=dy;
+		for(int i=0;i<elements.size();i++){
+			((Item)elements.elementAt(i)).moveRect(dx, dy);
+		}
 	}
 }
