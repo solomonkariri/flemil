@@ -12,6 +12,7 @@ import javax.microedition.lcdui.game.Sprite;
 import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
 import org.flemil.event.TabListener;
+import org.flemil.i18n.LocaleManager;
 import org.flemil.ui.Item;
 import org.flemil.util.Rectangle;
 
@@ -485,9 +486,19 @@ public class TabsControl implements Item {
     					getProperty(Style.TAB_FONT));
             		g.setClip(displayRect.x+arrow.getWidth()+3+(i*availWid)/3,
             				titlesRect.y+1, availWid/3, titlesRect.height+4);
-            		g.drawString(titles.elementAt(currentIndex>=2?currentIndex-2+i:i).toString(),
-            				displayRect.x+arrow.getWidth()+4+(i*availWid)/3+1,
-            				titlesRect.y+1, Graphics.TOP|Graphics.LEFT);
+            		if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
+            			g.drawString(titles.elementAt(currentIndex>=2?currentIndex-2+i:i).toString(),
+                				displayRect.x+arrow.getWidth()+4+(i*availWid)/3+1,
+                				titlesRect.y+1, Graphics.TOP|Graphics.LEFT);
+            		}
+            		else{
+            			String title=titles.elementAt(currentIndex>=2?currentIndex-2+i:i).toString();
+            			int titleWidth=((Font)GlobalControl.getControl().getStyle().
+            					getProperty(Style.TAB_FONT)).stringWidth(title);
+            			g.drawString(title,
+                				displayRect.x+arrow.getWidth()+4+(i*availWid)/3+1+availWid/3-titleWidth,
+                				titlesRect.y+1, Graphics.TOP|Graphics.LEFT);
+            		}
             		g.setClip(intersect2.x, intersect2.y, intersect2.width, intersect2.height);
         		}
         		for(int i=drawIndex+1;i<3 && i<tabItems.size();i++)
@@ -506,9 +517,19 @@ public class TabsControl implements Item {
     					getProperty(Style.TAB_FONT));
             		g.setClip(displayRect.x+arrow.getWidth()+3+(i*availWid)/3,
             				intersect2.y+1, availWid/3, intersect2.height+4);
-            		g.drawString(titles.elementAt(currentIndex>=2?currentIndex-2+i:i).toString(),
-            				displayRect.x+arrow.getWidth()+4+(i*availWid)/3+1,
-            				titlesRect.y+1, Graphics.TOP|Graphics.LEFT);
+            		if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
+            			g.drawString(titles.elementAt(currentIndex>=2?currentIndex-2+i:i).toString(),
+                				displayRect.x+arrow.getWidth()+4+(i*availWid)/3+1,
+                				titlesRect.y+1, Graphics.TOP|Graphics.LEFT);
+            		}
+            		else{
+            			String title=titles.elementAt(currentIndex>=2?currentIndex-2+i:i).toString();
+            			int titleWidth=((Font)GlobalControl.getControl().getStyle().
+            					getProperty(Style.TAB_FONT)).stringWidth(title);
+            			g.drawString(title,
+                				displayRect.x+arrow.getWidth()+4+(i*availWid)/3+1+availWid/3-titleWidth,
+                				titlesRect.y+1, Graphics.TOP|Graphics.LEFT);
+            		}
             		g.setClip(intersect2.x, intersect2.y, intersect2.width, intersect2.height);
         		}
         		Rectangle edge=new Rectangle(currentTitleRect.x,currentTitleRect.y,radius,currentTitleRect.height);
@@ -579,10 +600,18 @@ public class TabsControl implements Item {
 					getProperty(Style.TAB_FONT));
         		g.setClip(currentTitleRect.x+1, currentTitleRect.y+1, 
         				currentTitleRect.width-2, currentTitleRect.height);
-        		int start=textWidth>currentTitleRect.width-2?currentTitleRect.x+textIndent+1:
-        			currentTitleRect.x+currentTitleRect.width/2-textWidth/2;
-        		g.drawString(currentTitle, start,
-        				titlesRect.y+1, Graphics.TOP|Graphics.LEFT);
+        		if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
+        			int start=textWidth>currentTitleRect.width-2?currentTitleRect.x+textIndent+1:
+            			currentTitleRect.x+currentTitleRect.width/2-textWidth/2;
+            		g.drawString(currentTitle, start,
+            				titlesRect.y+1, Graphics.TOP|Graphics.LEFT);
+        		}
+        		else{
+        			int start=textWidth>currentTitleRect.width-2?currentTitleRect.x+currentTitleRect.width-textWidth-textIndent:
+            			currentTitleRect.x+currentTitleRect.width/2-textWidth/2;
+            		g.drawString(currentTitle, start,
+            				titlesRect.y+1, Graphics.TOP|Graphics.LEFT);
+        		}
         	}
         	Rectangle cont=clip.calculateIntersection(new Rectangle(displayRect.x,
         			displayRect.y+titlesRect.height,displayRect.width,

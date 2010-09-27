@@ -380,14 +380,13 @@ public class Panel implements Scrollable
         			currentlyFocussed=testItem;
         			currentlyFocussed.focusGained();
     			}
-    			scrollRectToVisible(testItem.getDisplayRect(),
-    					Scrollable.DIRECTION_X|Scrollable.DIRECTION_Y);
     			testItem.pointerReleasedEvent(x, y);
     		}
     	}
     }
     public void pointerDraggedEvent(int x,int y)
     {
+    	if(!vScrolling)return;
     	dragged=true;
     	if(!verticalScrollBar.getDisplayRect().contains(x, y, 0)){
     		int diff=y-lastPointY;
@@ -454,10 +453,11 @@ public class Panel implements Scrollable
         int minHei=1;
         //Get the number of children already added to this panel
         int size=children.size();
+        int scrw=(availWidth/30);
         for(int i=0;i<size;i++)
         {
             Rectangle minRect=(
-                    (Item)children.elementAt(i)).getMinimumDisplayRect(availWidth);
+                    (Item)children.elementAt(i)).getMinimumDisplayRect(availWidth-scrw);
             minWid=(minRect.width>minWid)?minRect.width:minWid;
             minHei+=minRect.height;
         }

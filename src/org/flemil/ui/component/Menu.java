@@ -656,7 +656,7 @@ public class Menu implements Item
     //Method that recalculates the display rects for items
     private void resetItemRects()
     {
-        //if display rect is not send then return
+    	//if display rect is not send then return
         if(displayRect.width<2 || entries.isEmpty() || spanRect.height<=2)
         {
             return;
@@ -664,12 +664,10 @@ public class Menu implements Item
         //Set the display rects for the menu items respecively
         Rectangle tmpRect=new Rectangle();
         tmpRect.x=displayRect.x+1;
-        tmpRect.height=GlobalControl.getControl().getMenuBarBGround().getHeight();
+        tmpRect.height=GlobalControl.getControl().getMenuItemBGround().getHeight();
         tmpRect.width=displayRect.width-2;
-        
-        int itemHeight=GlobalControl.getControl().getMenuItemBGround().getHeight();
         //Set the number of displayable menu items
-        displayable=(spanRect.height-2)/itemHeight;
+        displayable=(spanRect.height-2)/(tmpRect.height);
         //The starting point x for all items
         //Set whether scrolling is necessary
         int size=entries.size();
@@ -684,13 +682,13 @@ public class Menu implements Item
             Rectangle tmpR=new Rectangle();
             tmpR.x=tmpRect.x;
             tmpR.width=tmpRect.width;
-            tmpR.height=itemHeight/2;
-            tmpR.y=spanRect.y+spanRect.height-(itemHeight*displayable);
+            tmpR.height=tmpRect.height/2;
+            tmpR.y=spanRect.y+spanRect.height-(tmpRect.height*displayable);
             scrolls[0].setDisplayRect(tmpR);
             tmpR=new Rectangle();
             tmpR.x=tmpRect.x;
             tmpR.width=tmpRect.width;
-            tmpR.height=itemHeight/2;
+            tmpR.height=tmpRect.height/2;
             tmpR.y=spanRect.y+spanRect.height-tmpR.height;
             scrolls[1].setDisplayRect(tmpR);
         }
@@ -699,7 +697,6 @@ public class Menu implements Item
         	currentlyVisible=size;
         	if(scroll)
         	{
-        		topIndex=size-1;
         		scroll=false;
                 scrolls=null;
                 Runtime.getRuntime().gc();

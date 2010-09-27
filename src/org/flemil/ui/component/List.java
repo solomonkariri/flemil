@@ -464,13 +464,12 @@ public class List implements Item {
 	}
 
 	public void pointerReleasedEvent(int x, int y) {
-		for(int i=topIndex;i<topIndex+displayable;i++){
+		for(int i=0;i<elements.size();i++){
 			Item testItem=(Item)elements.elementAt(i);
 			if(testItem.getDisplayRect().contains(x, y, 0)){
 				if(testItem.isFocusible()){
 					currentItem.focusLost();
 					currentItem=testItem;
-					visualIndex=i-topIndex;
 					currentItem.focusGained();
 				}
 				testItem.pointerReleasedEvent(x, y);

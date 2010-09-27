@@ -159,42 +159,59 @@ public class ScreenWindow implements Window
     }
     public void pointerPressedEvent(int x,int y)
     {
-    	contentPane.pointerPressedEvent(x, y);
+    	if(currentPopUp!=null){
+    		currentPopUp.pointerPressedEvent(x, y);
+    	}
+    	else{
+    		contentPane.pointerPressedEvent(x, y);
+    	}
     }
     public void pointerReleasedEvent(int x,int y)
     {
-    	if(!fullScreen && getMenuBarRect().contains(x, y, 0)){
-    		Rectangle testLeft=new Rectangle(menubarRect.x, menubarRect.y, 
-    				menubarRect.width/2, menubarRect.height);
-    		if(testLeft.contains(x, y, 0)){
-    			keyPressedEvent(-6);
-    		}
-    		else{
-    			keyPressedEvent(-7);
-    		}
+    	if(currentPopUp!=null && currentPopUp.getDisplayRect().contains(x, y, 0)
+    			&& !currentMenu.isDisplaying()){
+    		currentPopUp.pointerReleasedEvent(x, y);
     	}
     	else{
-    		if(currentMenu.isDisplaying()){
-    			currentMenu.pointerReleasedEvent(x, y);
-    		}
-    		else{
-    			if(currentPopUp!=null){
-    				currentPopUp.pointerReleasedEvent(x, y);
-    			}
-    			else{
-    				if(fullScreen && menuArrowRect.contains(x,y,0)){
-        				keyPressedEvent(-7);
+    		if(!fullScreen && getMenuBarRect().contains(x, y, 0)){
+        		Rectangle testLeft=new Rectangle(menubarRect.x, menubarRect.y, 
+        				menubarRect.width/2, menubarRect.height);
+        		if(testLeft.contains(x, y, 0)){
+        			keyPressedEvent(-6);
+        		}
+        		else{
+        			keyPressedEvent(-7);
+        		}
+        	}
+        	else{
+        		if(currentMenu.isDisplaying()){
+        			currentMenu.pointerReleasedEvent(x, y);
+        		}
+        		else{
+        			if(currentPopUp!=null){
+        				currentPopUp.pointerReleasedEvent(x, y);
         			}
         			else{
-        				contentPane.pointerReleasedEvent(x, y);
+        				if(fullScreen && menuArrowRect.contains(x,y,0)){
+            				keyPressedEvent(-7);
+            			}
+            			else{
+            				contentPane.pointerReleasedEvent(x, y);
+            			}
         			}
-    			}
-    		}
+        		}
+        	}
     	}
     }
     public void pointerDraggedEvent(int x,int y)
     {
-        contentPane.pointerDraggedEvent(x, y);
+    	if(currentMenu.isDisplaying())return;
+    	if(currentPopUp!=null){
+    		currentPopUp.pointerDraggedEvent(x, y);
+    	}
+    	else{
+    		contentPane.pointerDraggedEvent(x, y);
+    	}
     }
     public void repaint(Rectangle clip)
     {
