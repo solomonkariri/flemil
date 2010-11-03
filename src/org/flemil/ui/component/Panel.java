@@ -8,8 +8,10 @@ import javax.microedition.lcdui.Graphics;
 
 import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
+import org.flemil.ui.Container;
 import org.flemil.ui.Item;
 import org.flemil.ui.Scrollable;
+import org.flemil.ui.Window;
 import org.flemil.util.Rectangle;
 
 
@@ -18,7 +20,7 @@ import org.flemil.util.Rectangle;
 /**
  * Class that represents a collections of items that are treated as 
  * a group within the display if the application. A Panel
- * can have a number of propereties that can be set by calling its methods.
+ * can have a number of properties that can be set by calling its methods.
  * Such properties include things such the layout of the items 
  * within the Panel and whether the Panel should allow its contents
  * to be scrolled horizontally or not. Panels can contain any collection of 
@@ -95,6 +97,8 @@ public class Panel implements Scrollable
 	private Item defaultFocusItem;
 	private boolean dragged;
 	private int lastPointY;
+	private Panel parentWindowPane;
+	private Item currentFocusible;
     
     public boolean isHorScrolling() {
 		return horScrolling;
@@ -103,7 +107,12 @@ public class Panel implements Scrollable
 		this.horScrolling = horScrolling;
 	}
 	public boolean isFocusible() {
-		return focusible;
+		if(!focusible)return false;
+		int size=children.size();
+		for(int i=0;i<size;i++){
+			if(((Item)children.elementAt(i)).isFocusible())return true;
+		}
+		return false;
 	}
 	public void setFocusible(boolean focusible) {
 		this.focusible = focusible;
@@ -206,91 +215,204 @@ public class Panel implements Scrollable
         {
             case Canvas.DOWN:
             {
-            	if(focusAll)parent.keyPressedEventReturned(keyCode);
-            	if(currentlyFocussed!=null && 
-            			currentlyFocussed.getDisplayRect().height>displayRect.height-topMargin-bottomMargin)
-            	{
-            		if(currentlyFocussed.getDisplayRect().y+currentlyFocussed.getDisplayRect().height>
-            		displayRect.y+displayRect.height-topMargin-bottomMargin)
-            		{
-            			scrollItems(0,-GlobalControl.getPanelScrollSpeed());
-            			break;
+            	if(parentWindowPane==null){
+            		Item test=parent;
+            		while(test!=null && !(test instanceof Window)){
+            			test=test.getParent();
+            		}
+            		if(test!=null){
+            			parentWindowPane=((Window)test).getContentPane();
             		}
             	}
-            	int position=currentlyFocussed!=null?children.indexOf(currentlyFocussed):0;
-        		while(position<children.size()-1
-        				&& focussed)
-        		{
-        			Item tst=(Item)children.elementAt(position+1);
-        			if(tst.isFocusible())
-        			{
-        				currentlyFocussed.focusLost();
-            			currentlyFocussed=tst;
-            			currentlyFocussed.focusGained();
-            			if(!(currentlyFocussed instanceof Scrollable))
-            			scrollRectToVisible(currentlyFocussed.getDisplayRect(), Scrollable.DIRECTION_Y);
-            			break;
-        			}
-        			position++;
-        		}
-        		if(position==children.size()-1)
-        		{
-        			if(currentYStart>displayRect.y-availableHeight-topMargin+displayRect.height+bottomMargin
-        					&& !(parent instanceof Scrollable))
-        			{
-        				scrollItems(0,-GlobalControl.getPanelScrollSpeed());
-        			}
-        			else if(parent!=null)
-        			{
-        				parent.keyPressedEventReturned(keyCode);
-        			}
-        			break;
-        		}
+            	if(parentWindowPane==null)return;
+            	if(focusAll){
+            		parent.keyPressedEventReturned(keyCode);
+            		return;
+            	}
+            	if(currentlyFocussed!=null)
+            	{
+            		Rectangle testRect=currentlyFocussed.getDisplayRect();
+            		Rectangle testRect2=parentWindowPane.displayRect;
+            		if(testRect.y+testRect.height>testRect2.y+testRect2.height-
+            				parentWindowPane.getBottomMargin()){
+            			scrollItems(0,-GlobalControl.getPanelScrollSpeed());
+            			if(currentFocusible!=null && currentFocusible.getDisplayRect().calculateIntersection(parentWindowPane.getDisplayRect())==null)
+        				{
+        					currentFocusible.focusLost();
+        					currentFocusible=null;
+        				}
+            			return;
+            		}
+            		else{
+            			int index=children.indexOf(currentlyFocussed);
+            			if(index>=children.size()-1){
+            				if(parent!=null){
+            					parent.keyPressedEventReturned(keyCode);
+            					return;
+            				}
+            			}
+            			else{
+            				int size=children.size();
+            				for(int i=index+1;i<size;i++){
+            					Item testItem=(Item)children.elementAt(i);
+            					Rectangle rct=testItem.getDisplayRect();
+            					if(rct.y+rct.height+1<=testRect2.y+testRect2.height-parentWindowPane.getBottomMargin()){
+            						index=i;
+            						if(testItem.isFocusible()){
+            							if(currentFocusible!=null)currentFocusible.focusLost();
+            							currentFocusible=testItem;
+            							currentlyFocussed=testItem;
+            							if(focussed)currentFocusible.focusGained();
+            							return;
+            						}
+            					}
+            					else{
+            						break;
+            					}
+            				}
+            				if(index==size-1){
+            					if(parent!=null)parent.keyPressedEventReturned(keyCode);
+            					return;
+            				}
+            				int maxScroll=testRect2.height-
+            				parentWindowPane.getTopMargin()-parentWindowPane.getBottomMargin()-4;
+            				int currentHeights=0;
+            				Item selectedItem=(Item)children.elementAt(index+1);
+            				currentHeights+=selectedItem.getDisplayRect().height+1;
+            				index++;
+            				if(!selectedItem.isFocusible() && currentHeights<maxScroll){
+            					int i=index+1;
+                				for(;i<size;i++){
+                					Item testItem=(Item)children.elementAt(i);
+                					if(testItem.getDisplayRect().height+1+currentHeights<=maxScroll){
+                						currentHeights+=testItem.getDisplayRect().height+1;
+                						index++;
+                						if(testItem.isFocusible())break;
+                					}
+                				}
+            				}
+            				if(Math.abs(currentHeights)>maxScroll){
+            					currentHeights=maxScroll/2;
+            				}
+            				scrollItems(0, -currentHeights);
+            				selectedItem=(Item)children.elementAt(index);
+            				currentlyFocussed=selectedItem;
+            				if(selectedItem.isFocusible()){
+            					if(currentFocusible!=null)currentFocusible.focusLost();
+            					currentFocusible=selectedItem;
+            				}
+            				if(currentFocusible!=null && currentFocusible.getDisplayRect().calculateIntersection(parentWindowPane.getDisplayRect())==null)
+            				{
+            					currentFocusible.focusLost();
+            					currentFocusible=null;
+            				}
+            				if(focussed && currentFocusible!=null){
+            					currentFocusible.focusGained();
+            				}
+            			}
+            		}
+            	}
         		break;
             }
             case Canvas.UP:
             {
-            	if(focusAll)parent.keyPressedEventReturned(keyCode);
-            	if(currentlyFocussed!=null && 
-            			currentlyFocussed.getDisplayRect().height>displayRect.height-topMargin-bottomMargin)
-            	{
-            		if(currentlyFocussed.getDisplayRect().y<
-            		displayRect.y+topMargin)
-            		{
-            			scrollItems(0,GlobalControl.getPanelScrollSpeed());
-            			break;
+            	if(parentWindowPane==null){
+            		Item test=parent;
+            		while(test!=null && !(test instanceof Window)){
+            			test=test.getParent();
+            		}
+            		if(test!=null){
+            			parentWindowPane=((Window)test).getContentPane();
             		}
             	}
-            	int position=currentlyFocussed!=null?children.indexOf(currentlyFocussed):
-            		children.size()-1;
-        		while(position>0
-        				&& focussed)
-        		{
-        			Item tst=(Item)children.elementAt(position-1);
-        			if(tst.isFocusible())
-        			{
-        				currentlyFocussed.focusLost();
-            			currentlyFocussed=tst;
-            			currentlyFocussed.focusGained();
-            			if(!(currentlyFocussed instanceof Scrollable))
-            			scrollRectToVisible(currentlyFocussed.getDisplayRect(), Scrollable.DIRECTION_Y);
-            			break;
-        			}
-        			position--;
-        		}
-        		if(position==0)
-        		{
-        			if(currentYStart<displayRect.y+topMargin && !(parent instanceof Scrollable))
-        			{
-        				scrollItems(0,GlobalControl.getPanelScrollSpeed());
-        			}
-        			else if(parent!=null)
-        			{
-        				parent.keyPressedEventReturned(keyCode);
-        			}
-        			break;
-        		}
-            	break;
+            	if(parentWindowPane==null)return;
+            	if(focusAll){
+            		parent.keyPressedEventReturned(keyCode);
+            		return;
+            	}
+            	if(currentlyFocussed!=null)
+            	{
+            		Rectangle testRect=currentlyFocussed.getDisplayRect();
+            		Rectangle testRect2=parentWindowPane.displayRect;
+            		if(testRect.y<testRect2.y+
+            				parentWindowPane.getTopMargin()){
+            			scrollItems(0,GlobalControl.getPanelScrollSpeed());
+            			if(currentFocusible!=null && currentFocusible.getDisplayRect().calculateIntersection(parentWindowPane.getDisplayRect())==null)
+        				{
+        					currentFocusible.focusLost();
+        					currentFocusible=null;
+        				}
+            			return;
+            		}
+            		else{
+            			int index=children.indexOf(currentlyFocussed);
+            			if(index<=0){
+            				if(parent!=null){
+            					parent.keyPressedEventReturned(keyCode);
+            					return;
+            				}
+            			}
+            			else{
+            				for(int i=index-1;i>-1;i--){
+            					Item testItem=(Item)children.elementAt(i);
+            					Rectangle rct=testItem.getDisplayRect();
+            					if(rct.y-1>=testRect2.y+parentWindowPane.getTopMargin()){
+            						index=i;
+            						if(testItem.isFocusible()){
+            							if(currentFocusible!=null)currentFocusible.focusLost();
+            							currentFocusible=testItem;
+            							currentlyFocussed=testItem;
+            							if(focussed)currentFocusible.focusGained();
+            							return;
+            						}
+            					}
+            					else{
+            						break;
+            					}
+            				}
+            				if(index==0){
+            					if(parent!=null)parent.keyPressedEventReturned(keyCode);
+            					return;
+            				}
+            				int maxScroll=testRect2.height-
+            				parentWindowPane.getTopMargin()-parentWindowPane.getBottomMargin()-4;
+            				int currentHeights=0;
+            				Item selectedItem=(Item)children.elementAt(index-1);
+            				currentHeights+=selectedItem.getDisplayRect().height+1;
+            				index--;
+            				if(!selectedItem.isFocusible() && currentHeights<maxScroll){
+            					int i=index-1;
+                				for(;i>-1;i--){
+                					Item testItem=(Item)children.elementAt(i);
+                					if(testItem.getDisplayRect().height+1+currentHeights<=maxScroll){
+                						currentHeights+=testItem.getDisplayRect().height+1;
+                						index--;
+                						if(testItem.isFocusible())break;
+                					}
+                				}
+            				}
+            				if(Math.abs(currentHeights)>maxScroll){
+            					currentHeights=maxScroll/2;
+            				}
+            				scrollItems(0, currentHeights);
+            				selectedItem=(Item)children.elementAt(index);
+            				currentlyFocussed=selectedItem;
+            				if(selectedItem.isFocusible()){
+            					if(currentFocusible!=null)currentFocusible.focusLost();
+            					currentFocusible=selectedItem;
+            				}
+            				if(currentFocusible!=null && currentFocusible.getDisplayRect().calculateIntersection(parentWindowPane.getDisplayRect())==null)
+            				{
+            					currentFocusible.focusLost();
+            					currentFocusible=null;
+            				}
+            				if(focussed && currentFocusible!=null){
+            					currentFocusible.focusGained();
+            				}
+            			}
+            		}
+            	}
+        		break;
             }
             case Canvas.LEFT:
             {
@@ -329,7 +451,12 @@ public class Panel implements Scrollable
     {
     	if(currentlyFocussed!=null)
     	{
-    		currentlyFocussed.keyPressedEvent(keyCode);
+    		if(currentFocusible!=null){
+    			currentFocusible.keyPressedEvent(keyCode);
+    		}
+    		else{
+    			keyPressedEventReturned(keyCode);
+    		}
     	}
     	else
     	{
@@ -448,12 +575,15 @@ public class Panel implements Scrollable
     }
     public Rectangle getMinimumDisplayRect(int availWidth)
     {
-        //Initialize the minimum possible width and height
+    	//Initialize the minimum possible width and height
         int minWid=1;
         int minHei=1;
         //Get the number of children already added to this panel
         int size=children.size();
-        int scrw=(availWidth/30);
+        int scrw=0;
+        if(parent instanceof Window){
+        	scrw=availWidth/30;
+        }
         for(int i=0;i<size;i++)
         {
             Rectangle minRect=(
@@ -477,9 +607,9 @@ public class Panel implements Scrollable
     	focussed=false;
     	if(!focusAll)
     	{
-    		if(currentlyFocussed!=null)
+    		if(currentFocusible!=null)
             {
-                currentlyFocussed.focusLost();
+                currentFocusible.focusLost();
             }
     	}
     	else
@@ -496,10 +626,45 @@ public class Panel implements Scrollable
         {
         	if(currentlyFocussed!=null)
     		{
-    			if(displayRect.width>1)
-    		        this.scrollRectToVisible(currentlyFocussed.getDisplayRect(),
-    		        		Scrollable.DIRECTION_X|Scrollable.DIRECTION_Y);
-    			currentlyFocussed.focusGained();
+        		if(currentFocusible!=null){
+        			currentFocusible.focusGained();
+        		}
+        		else{
+        			if(parentWindowPane==null){
+                		Item test=parent;
+                		while(test!=null && !(test instanceof Window)){
+                			test=test.getParent();
+                		}
+                		if(test!=null){
+                			parentWindowPane=((Window)test).getContentPane();
+                		}
+                	}
+                	if(parentWindowPane==null)return;
+        			Rectangle rect1=currentlyFocussed.getDisplayRect();
+        			Rectangle rect2=parentWindowPane.getDisplayRect();
+        			int diff=rect2.y+rect2.height-parentWindowPane.getBottomMargin()-
+        				(rect1.y+rect1.height+1);
+        			if(diff>0){
+        				int index=children.indexOf(currentlyFocussed);
+        				int size=children.size();
+        				if(index<size-1){
+        					for(int i=index+1;i<size;i++){
+        						Item testItem=(Item)children.elementAt(i);
+        						if(testItem.getDisplayRect().y+testItem.getDisplayRect().height>rect2.y+rect2.height){
+        							break;
+        						}
+        						if(testItem.isFocusible()){
+        							currentFocusible=testItem;
+        							break;
+        						}
+        					}
+        				}
+        			}
+        		}
+        		if(currentFocusible!=null){
+        			currentFocusible.focusGained();
+        			currentlyFocussed=currentFocusible;
+        		}
     		}
         }
         else
@@ -512,6 +677,7 @@ public class Panel implements Scrollable
     public void setParent(Item parent)  
     {
         this.parent=parent;
+        parentWindowPane=null;
     }
     public Item getParent()
     {
@@ -534,24 +700,57 @@ public class Panel implements Scrollable
      */
     public synchronized void add(Item item)
     {
-    	if(currentlyFocussed!=null && !currentlyFocussed.isFocusible())currentlyFocussed=null;
-    	if(currentlyFocussed==null && item.isFocusible())
+    	if(currentlyFocussed==null)
     	{
     		currentlyFocussed=item;
+    		if(currentlyFocussed.isFocusible())currentFocusible=currentlyFocussed;
     	}
     	children.addElement(item);
     	item.setParent(this);
-    	if(focussed && currentlyFocussed!=null){currentlyFocussed.focusGained();}
-    	if(currentlyFocussed==null){
-    		currentlyFocussed=item;
-    	}
+    	if(focussed && currentlyFocussed.isFocusible()){currentlyFocussed.focusGained();}
     	layoutItems();
+    	if(currentFocusible==null){
+    		if(parentWindowPane==null){
+        		Item test=parent;
+        		while(test!=null && !(test instanceof Window)){
+        			test=test.getParent();
+        		}
+        		if(test!=null){
+        			parentWindowPane=((Window)test).getContentPane();
+        		}
+        	}
+        	if(parentWindowPane==null)return;
+			Rectangle rect1=currentlyFocussed.getDisplayRect();
+			Rectangle rect2=parentWindowPane.getDisplayRect();
+			int diff=rect2.y+rect2.height-parentWindowPane.getBottomMargin()-
+				(rect1.y+rect1.height+1);
+			if(diff>0){
+				int index=children.indexOf(currentlyFocussed);
+				int size=children.size();
+				if(index<size-1){
+					for(int i=index+1;i<size;i++){
+						Item testItem=(Item)children.elementAt(i);
+						if(testItem.getDisplayRect().y+testItem.getDisplayRect().height>rect2.y+rect2.height){
+							break;
+						}
+						if(testItem.isFocusible()){
+							currentFocusible=testItem;
+							break;
+						}
+					}
+				}
+			}
+    	}
+    	if(focussed && currentFocusible!=null){
+    		currentFocusible.focusGained();
+    	}
     }
     /**
      * Removes all the items that have been added to this Panel
      */
     public synchronized void removeAll()
     {
+    	if(currentFocusible!=null)currentFocusible=null;
     	if(currentlyFocussed!=null){
     		currentlyFocussed.focusLost();
     	}
@@ -562,11 +761,6 @@ public class Panel implements Scrollable
     	}
     	children.removeAllElements();
     	layoutItems();
-//    	new Thread(new Runnable() {
-//			public void run() {
-//				repaint(displayRect);				
-//			}
-//		}).start();
     }
     /**
      * Removes the Item passed to this method from this Panel
@@ -574,7 +768,10 @@ public class Panel implements Scrollable
      */
     public synchronized void remove(Item item)
     {
-    	if(item==currentlyFocussed)
+    	if(currentFocusible!=null && item.equals(currentFocusible)){
+    		currentFocusible=null;
+    	}
+    	if(currentlyFocussed!=null && item==currentlyFocussed)
     	{
     		currentlyFocussed=null;
     		int index=children.indexOf(item);
@@ -609,7 +806,6 @@ public class Panel implements Scrollable
     	if(children.isEmpty() || displayRect.width<=1)return;
     	hScrolling=vScrolling=false;
     	verticalScrollBar=horizontalScrollBar=null;
-    	if(displayRect.width<=1)return;
     	int largestItemWidth=1;
     	scrWid=0;
     	Vector tempStr=new Vector();
@@ -772,6 +968,38 @@ public class Panel implements Scrollable
     }
 	private void scrollItems(int dx,int dy)
     {
+		if(dy!=0 && !vScrolling){
+			if(parentWindowPane==null){
+        		Item test=parent;
+        		while(test!=null && !(test instanceof Window)){
+        			test=test.getParent();
+        		}
+        		if(test!=null){
+        			parentWindowPane=((Window)test).getContentPane();
+        		}
+        	}
+        	if(parentWindowPane==null)return;
+        	if(!parentWindowPane.equals(this)){
+        		parentWindowPane.scrollItems(0, dy);
+            	dy=0;
+        	}
+		}
+		if(dx!=0 && !hScrolling){
+			if(parentWindowPane==null){
+        		Item test=parent;
+        		while(test!=null && !(test instanceof Window)){
+        			test=test.getParent();
+        		}
+        		if(test!=null){
+        			parentWindowPane=((Window)test).getContentPane();
+        		}
+        	}
+        	if(parentWindowPane==null)return;
+        	if(!parentWindowPane.equals(this)){
+        		parentWindowPane.scrollItems(dx, 0);
+            	dx=0;
+        	}
+		}
 		if(dx!=0 && hScrolling)
 		{
 			if((displayRect.x-(currentXStart+dx))>(availableWidth-(displayRect.width)))
@@ -919,11 +1147,57 @@ public class Panel implements Scrollable
 			((Item)children.elementAt(i)).moveRect(dx, dy);
 		}
 	}
-	public void acrollContentsHorizontally(int change) {
-		// TODO Auto-generated method stub
+	public void scrollContentsHorizontally(int change) {
 		
 	}
 	public void scrollContentsVertically(int change) {
 		scrollItems(0, change);
+	}
+	public void itemHeightChanged(Item item, int change) {
+		int index=children.indexOf(item);
+		int size=children.size();
+		if(index!=-1){
+			for(int i=index+1;i<size;i++){
+				((Item)children.elementAt(i)).moveRect(0, change);
+			}
+		}
+		if(parent==null)return;
+		if(parent instanceof Container && !vScrolling){
+			displayRect.height+=change;
+			((Container)parent).itemHeightChanged(this, change);
+		}
+		else{
+			if(vScrolling){
+				Rectangle test=((Item)children.elementAt(size-1)).getDisplayRect();
+				if(test.y+test.height<displayRect.y+displayRect.height-bottomMargin){
+					GlobalControl.getControl().refreshLayout();
+					return;
+				}
+				int previousPoint=verticalScrollBar.getCurrentPoint();
+				availableHeight+=change;
+				verticalScrollBar=null;
+		    	if(displayRect.width<=1)return;
+		    	int scrheight=hScrolling?displayRect.height-scrWid:displayRect.height;
+	    		verticalScrollBar=new ScrollBar(displayRect.height-(topMargin+bottomMargin),
+	    				availableHeight,
+	    				ScrollBar.VERTICAL_ORIENTATION);
+	    		verticalScrollBar.setParent(this);
+	    		Rectangle rect=new Rectangle();
+	    		rect.x=displayRect.x+displayRect.width-scrWid;
+	    		rect.width=scrWid;
+	    		rect.y=displayRect.y;
+	    		rect.height=scrheight;
+	    		verticalScrollBar.setDisplayRect(rect);
+	    		verticalScrollBar.setCurrentPoint(previousPoint+change);
+	    		scrollRectToVisible(item.getDisplayRect(), Scrollable.DIRECTION_Y);
+			}
+			else{
+				Rectangle test=((Item)children.elementAt(size-1)).getDisplayRect();
+				if(test.y+test.height>displayRect.y+displayRect.height-bottomMargin){
+					GlobalControl.getControl().refreshLayout();
+				}
+			}
+		}
+		repaint(displayRect);
 	}
 }

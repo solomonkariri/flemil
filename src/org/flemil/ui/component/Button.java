@@ -27,6 +27,7 @@ public class Button implements TextItem
 	private Label nameDisplayer;
 	private boolean focussed;
 	private boolean paintBorder=true;
+	private boolean textChanged;
 	public ButtonListener getListener() {
 		return listener;
 	}
@@ -37,6 +38,8 @@ public class Button implements TextItem
 	private ButtonListener listener;
 	private Font font;
 	private boolean fontSet;
+	private int reqHeight;
+	private int diff;
 	
 	public boolean isFocusible() {
 		return nameDisplayer.isFocusible();
@@ -76,7 +79,7 @@ public class Button implements TextItem
 
 	public Rectangle getDisplayRect() 
 	{
-		return nameDisplayer.getDisplayRect();
+		return displayRect;
 	}
 
 	public synchronized Rectangle getMinimumDisplayRect(int availWidth) 
@@ -139,7 +142,7 @@ public class Button implements TextItem
         	{
         		g.setColor(((Integer)GlobalControl.getControl().getStyle().getProperty(
                         Style.THEME_BACKGROUND)).intValue());
-        		Rectangle edge=new Rectangle(displayRect.x,displayRect.y,radius,displayRect.height);
+        		Rectangle edge=new Rectangle(displayRect.x,displayRect.y+diff,radius,reqHeight);
         		Rectangle interDisp=null;
             	if((interDisp=edge.calculateIntersection(clip))!=null)
             	{
@@ -153,7 +156,7 @@ public class Button implements TextItem
             				edge.x+1, edge.y+1, Graphics.TOP|Graphics.LEFT);
             	}
             	edge=new Rectangle(displayRect.x+displayRect.width-radius,
-            			displayRect.y,radius,displayRect.height);
+            			displayRect.y+diff,radius,reqHeight);
             	if((interDisp=edge.calculateIntersection(clip))!=null)
             	{
             		g.setClip(interDisp.x, interDisp.y, interDisp.width, interDisp.height);
@@ -163,7 +166,7 @@ public class Button implements TextItem
             				edge.x-radius, edge.y+1, Graphics.TOP|Graphics.LEFT);
             	}
             	edge=new Rectangle(displayRect.x+radius,
-            			displayRect.y,displayRect.width-(radius*2),displayRect.height);
+            			displayRect.y+diff,displayRect.width-(radius*2),reqHeight);
             	if((interDisp=edge.calculateIntersection(clip))!=null)
             	{
             		g.setClip(interDisp.x, interDisp.y, interDisp.width, interDisp.height);
@@ -182,8 +185,8 @@ public class Button implements TextItem
         	{
         		g.setColor(((Integer)GlobalControl.getControl().getStyle().
         				getProperty(Style.BUTTON_BACKGROUND)).intValue());
-            	g.fillRoundRect(displayRect.x+1, displayRect.y+1, displayRect.width-2,
-            			displayRect.height-2, 
+            	g.fillRoundRect(displayRect.x+1, displayRect.y+1+diff, displayRect.width-2,
+            			reqHeight-2, 
             			radius,radius);
             	g.setColor(((Integer)GlobalControl.getControl().getStyle().
         				getProperty(Style.BUTTON_FOREGROUND)).intValue());
@@ -244,7 +247,10 @@ public class Button implements TextItem
 	{
         displayRect=rect;
         int rad=((Integer)GlobalControl.getControl().getStyle().getProperty(Style.BUTTON_CURVE_RADIUS)).intValue();
-        Rectangle dispRect=new Rectangle(displayRect.x+rad-1,displayRect.y,displayRect.width-(rad*2)+2,displayRect.height);
+        Rectangle min=nameDisplayer.getMinimumDisplayRect(rect.width);
+        reqHeight=min.height+2;
+        diff=(displayRect.height-reqHeight)/2;
+        Rectangle dispRect=new Rectangle(displayRect.x+rad-1,displayRect.y+diff,displayRect.width-(rad*2)+2,reqHeight);
         nameDisplayer.setDisplayRect(dispRect);
 	}
 
@@ -307,5 +313,11 @@ public class Button implements TextItem
 		displayRect.x+=dx;
 		displayRect.y+=dy;
 		nameDisplayer.moveRect(dx, dy);
+	}
+	public void setTextChanged(boolean textChanged) {
+		this.textChanged = textChanged;
+	}
+	public boolean isTextChanged() {
+		return textChanged;
 	}
 }

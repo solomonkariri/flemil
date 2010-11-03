@@ -30,6 +30,7 @@ public class CheckBox implements TextItem {
 	private boolean selected;
 	private MenuItem markItem;
 	private boolean selectable=true;
+	private boolean textChanged;
 	
 	/**
 	 * 
@@ -354,5 +355,11 @@ public class CheckBox implements TextItem {
 		displayRect.x+=dx;
 		displayRect.y+=dy;
 		nameDisplayer.moveRect(dx, dy);
+	}
+	public void setTextChanged(boolean textChanged) {
+		this.textChanged = textChanged;
+	}
+	public boolean isTextChanged() {
+		return textChanged;
 	}
 }

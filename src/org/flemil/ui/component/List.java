@@ -8,6 +8,7 @@ import javax.microedition.lcdui.Graphics;
 import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
 import org.flemil.event.ListSelectionListener;
+import org.flemil.ui.Container;
 import org.flemil.ui.Item;
 import org.flemil.ui.Scrollable;
 import org.flemil.util.Rectangle;
@@ -23,7 +24,7 @@ import org.flemil.util.Rectangle;
  * @author Solomon Kariri
  *
  */
-public class List implements Item {
+public class List implements Container {
 	private Vector elements;
 	private Item currentItem;
 	private boolean focussed;
@@ -34,6 +35,7 @@ public class List implements Item {
 	private int leftMargin=0;
 	private int rightMargin=0;
 	private boolean paintBorder=true;
+	private boolean wraps=false;
 	public int getTopMargin() {
 		return topMargin;
 	}
@@ -58,13 +60,10 @@ public class List implements Item {
 	public void setRightMargin(int rightMargin) {
 		this.rightMargin = rightMargin;
 	}
-	private int availableWidth;
 	private boolean focusible=true;
 	private ListSelectionListener listener;
-	private int visualIndex=-1;
-	private int topIndex=-1;
-	private int displayable;
 	private int maxHeight;
+	private int currentIndex;
 	
 	/**
 	 * Creates a default list with no elements
@@ -80,11 +79,6 @@ public class List implements Item {
 	 */
 	public synchronized void add(Item item)
 	{
-		if(currentItem==null)
-    	{
-			topIndex=0;
-			visualIndex=0;
-    	}
     	elements.addElement(item);
     	currentItem=(Item)elements.elementAt(0);
     	item.setParent(this);
@@ -111,9 +105,6 @@ public class List implements Item {
 	{
     	elements.removeElement(item);
     	item.setParent(null);
-    	topIndex=0;
-    	visualIndex=0;
-    	displayable=0;
     	if(!elements.isEmpty())
     	{
     		if(currentItem!=null)currentItem.focusLost();
@@ -128,9 +119,6 @@ public class List implements Item {
 	}
 	public synchronized void removeAll()
 	{
-		topIndex=0;
-		visualIndex=0;
-		displayable=0;
 		if(currentItem!=null)currentItem.focusLost();
 		currentItem=null;
     	for(int i=0;i<elements.size();i++)
@@ -159,23 +147,8 @@ public class List implements Item {
 			if(currentItem!=null)
 				currentItem.focusLost();
 			int index=elements.indexOf(entry);
-			if(index<topIndex)
-			{
-				topIndex=index;
-				visualIndex=0;
-				layoutItems();
-			}
-			else if(index>topIndex+displayable-1)
-			{
-				topIndex=index-displayable+1;
-				visualIndex=displayable-1;
-				layoutItems();
-			}
-			else
-			{
-				visualIndex=index-topIndex;
-			}
 			currentItem=(Item)elements.elementAt(index);
+			currentIndex=index;
 			if(focussed)
 			{
 				visualizeRect(currentItem.getDisplayRect());
@@ -200,21 +173,14 @@ public class List implements Item {
 	
 	private synchronized void layoutItems()
     {
-    	if(displayRect.width<=1 || elements.isEmpty())return;
-    	int trackY=getDisplayRect().y+(topIndex*(maxHeight+1))+topMargin;
-    	int i=topIndex;
-    	while(i<topIndex+displayable+1 && i<elements.size())
-    	{
-    		Item tempItem=(Item)elements.elementAt(i);
-    		Rectangle tempRect=new Rectangle();
-    		tempRect.y=trackY;
-    		availableWidth=displayRect.width;
-    		tempRect.x=displayRect.x+leftMargin;
-			tempRect.width=availableWidth-rightMargin-leftMargin;	
-			tempRect.height=maxHeight;
-			tempItem.setDisplayRect(tempRect);
-			trackY+=maxHeight+1;
-			i++;
+		int size=elements.size();
+    	int yStart=displayRect.y+2;
+    	for(int i=0;i<size;i++){
+    		Rectangle itemRect=new Rectangle(displayRect.x+leftMargin+1, yStart+i*(maxHeight+1), displayRect.width-leftMargin-rightMargin-2, maxHeight);
+    		((Item)elements.elementAt(i)).setDisplayRect(itemRect);
+    	}
+    	if(focussed && currentItem!=null){
+    		visualizeRect(currentItem.getDisplayRect());
     	}
     }
 	/**
@@ -232,22 +198,7 @@ public class List implements Item {
 			{
 				currentItem.focusGained();
 			}
-			if(parent instanceof Scrollable)
-			{
-				Rectangle visualRect=null;
-				if(topIndex==0){
-					visualRect=new Rectangle(((Item)elements.elementAt(
-							topIndex)).getDisplayRect());
-					visualRect.y+=2;
-				}
-				else{
-					visualRect=new Rectangle(((Item)elements.elementAt(
-							topIndex+displayable-1)).getDisplayRect());
-					visualRect.y-=2;
-				}
-				((Scrollable) parent).scrollRectToVisible(
-						visualRect, Scrollable.DIRECTION_Y);
-			}
+			visualizeRect(currentItem.getDisplayRect());
 			repaint(displayRect);
 		}
 	}
@@ -275,7 +226,7 @@ public class List implements Item {
 		return maxHeight;
 	}
 	public Rectangle getMinimumDisplayRect(int availWidth) {
-        int maxHeight=getMaxHeight(availWidth-leftMargin-rightMargin);
+        maxHeight=getMaxHeight(availWidth-leftMargin-rightMargin);
         Rectangle result=new Rectangle();
         result.width=availWidth;
         result.height=elements.size()*(maxHeight+1)+topMargin+bottomMargin;
@@ -312,85 +263,79 @@ public class List implements Item {
 	
 	private void visualizeRect(Rectangle rect)
 	{
-		if(currentItem!=null && parent!=null)
-		{
-			if(rect.y<parent.getDisplayRect().y)
-			{
-				if(parent instanceof Scrollable)
-				{
-					((Scrollable)parent).scrollRectToVisible(rect, Scrollable.DIRECTION_Y);
-				}
-			}
-			else if(rect.y+rect.height+2>
-				parent.getDisplayRect().y+parent.getDisplayRect().height)
-			{
-				if(parent instanceof Scrollable)
-				{
-					((Scrollable)parent).scrollRectToVisible(rect, Scrollable.DIRECTION_Y);
-				}
-			}
+		Item testItem=parent;
+		while(testItem!=null && !(testItem instanceof Scrollable)){
+			testItem=testItem.getParent();
+		}
+		if(testItem instanceof Scrollable){
+			((Scrollable)testItem).scrollRectToVisible(rect, Scrollable.DIRECTION_Y|Scrollable.DIRECTION_X);
 		}
 	}
 	
 	public void keyPressedEventReturned(int keyCode) {
+		if(elements.isEmpty())return;
 		int key=GlobalControl.getControl().getMainDisplayCanvas().getGameAction(keyCode); 
         switch(key)
         {
             case Canvas.DOWN:
             {
-            	if(visualIndex<displayable-1 && visualIndex<elements.size()-1)
-            	{
-            		visualIndex++;
+            	if(currentIndex==elements.size()-1){
+            		if(!wraps){
+            			visualizeRect(((Item)elements.elementAt(currentIndex)).getDisplayRect());
+                		if(parent!=null){
+                			parent.keyPressedEventReturned(keyCode);
+                		}
+            		}
+            		else{
+            			if(currentItem!=null)currentItem.focusLost();
+            			currentIndex=0;
+            			currentItem=(Item)elements.elementAt(currentIndex);
+            			Rectangle rect=new Rectangle(currentItem.getDisplayRect());
+                		rect.y-=2;
+                		rect.height+=2;
+                		visualizeRect(rect);
+                		if(focussed)currentItem.focusGained();
+            		}
+            	}
+            	else{
+            		currentIndex++;
             		currentItem.focusLost();
-            		currentItem=(Item)elements.elementAt(topIndex+visualIndex);
-            		currentItem.focusGained();
+            		currentItem=(Item)elements.elementAt(currentIndex);
             		visualizeRect(currentItem.getDisplayRect());
-            	}
-            	else if(topIndex+displayable-1<elements.size()-1)
-            	{
-            		topIndex++;
-            		Rectangle tmpRect=currentItem.getDisplayRect();
-            		Rectangle newRect=new Rectangle(tmpRect.x, tmpRect.y+tmpRect.height+1, tmpRect.width, tmpRect.height);
-            		Item it=((Item)elements.elementAt(elements.indexOf(currentItem)+1));
-            		currentItem.focusLost();
-            		currentItem=it;
-            		currentItem.setDisplayRect(newRect);
-            		currentItem.focusGained();
-            		visualizeRect(newRect);
-            	}
-            	else
-            	{
-            		if(parent!=null)
-                    	parent.keyPressedEventReturned(keyCode);
+            		if(focussed)currentItem.focusGained();
             	}
                 break;
             }
             case Canvas.UP:
             {
-            	if(visualIndex>0)
-            	{
-            		visualIndex--;
-            		currentItem.focusLost();
-            		currentItem=(Item)elements.elementAt(topIndex+visualIndex);
-            		currentItem.focusGained();
-            		visualizeRect(currentItem.getDisplayRect());
+            	if(currentIndex==0){
+            		if(!wraps){
+            			Rectangle rect=new Rectangle(((Item)elements.elementAt(currentIndex)).getDisplayRect());
+                		rect.y-=2;
+                		rect.height+=2;
+                		visualizeRect(rect);
+                		if(parent!=null){
+                			parent.keyPressedEventReturned(keyCode);
+                		}
+            		}
+            		else{
+            			if(currentItem!=null)currentItem.focusLost();
+            			currentIndex=elements.size()-1;
+            			currentItem=(Item)elements.elementAt(currentIndex);
+            			Rectangle rect=new Rectangle(currentItem.getDisplayRect());
+                		visualizeRect(rect);
+                		if(focussed)currentItem.focusGained();
+            		}
             	}
-            	else if(topIndex>0)
-            	{
-            		topIndex--;
-            		Rectangle tmpRect=currentItem.getDisplayRect();
-            		Rectangle newRect=new Rectangle(tmpRect.x, tmpRect.y-tmpRect.height+1, tmpRect.width, tmpRect.height);
-            		Item it=((Item)elements.elementAt(elements.indexOf(currentItem)-1));
+            	else{
+            		currentIndex--;
             		currentItem.focusLost();
-            		currentItem=it;
-            		currentItem.setDisplayRect(newRect);
-            		currentItem.focusGained();
-            		visualizeRect(newRect);
-            	}
-            	else
-            	{
-            		if(parent!=null)
-                    	parent.keyPressedEventReturned(keyCode);
+            		currentItem=(Item)elements.elementAt(currentIndex);
+            		Rectangle rect=new Rectangle(currentItem.getDisplayRect());
+            		rect.y-=2;
+            		rect.height+=2;
+            		visualizeRect(rect);
+            		if(focussed)currentItem.focusGained();
             	}
             	break;
             }
@@ -427,7 +372,8 @@ public class List implements Item {
         if((intersect=this.displayRect.calculateIntersection(clip))!=null)
         {
         	g.setClip(intersect.x, intersect.y, intersect.width, intersect.height);
-        	for(int i=topIndex;i<topIndex+displayable+1&&i<elements.size();i++)
+        	int size=elements.size();
+        	for(int i=0;i<size;i++)
         	{
         		((Item)elements.elementAt(i)).paint(g, clip);
         	}
@@ -493,25 +439,7 @@ public class List implements Item {
 	}
 
 	public synchronized void setDisplayRect(Rectangle rect) {
-		int initial=displayable;
-		displayRect=rect;
-		maxHeight=getMaxHeight(displayRect.width);
-		displayable=(parent.getDisplayRect().height)/(maxHeight+1);
-		displayable=displayable*(maxHeight+1)<parent.getDisplayRect().height?displayable+1:displayable;
-		if(displayable!=initial)
-		{
-			topIndex=0;
-			visualIndex=0;
-			currentItem=elements.isEmpty()?null:(Item)elements.elementAt(0);
-			if(focussed)
-				new Thread(new Runnable() {
-					
-					public void run() {
-						currentItem.focusGained();
-						visualizeRect(currentItem.getDisplayRect());
-					}
-				}).start();
-		}
+		this.displayRect=rect;
         layoutItems();
 	}
 
@@ -556,5 +484,14 @@ public class List implements Item {
 		for(int i=0;i<elements.size();i++){
 			((Item)elements.elementAt(i)).moveRect(dx, dy);
 		}
+	}
+	public void itemHeightChanged(Item item, int change) {
+		GlobalControl.getControl().refreshLayout();
+	}
+	public void setWraps(boolean wraps) {
+		this.wraps = wraps;
+	}
+	public boolean isWraps() {
+		return wraps;
 	}
 }

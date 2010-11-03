@@ -120,7 +120,7 @@ public class TabsControl implements Item {
 	 * @param item the Item to be added. 
 	 * @param title the title to be displayed for that tab
 	 */
-	public void add(Item item,String title)
+	public void add(Panel item,String title)
 	{
     	tabItems.addElement(item);
     	titles.addElement(title);

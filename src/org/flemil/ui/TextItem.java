@@ -131,4 +131,7 @@ public interface TextItem extends Item
 	 * @param indent the indentation to be used by this TextItem when rendering its text
 	 */
 	public void setTextIndent(int indent);
+	
+	public boolean isTextChanged();
+	public void setTextChanged(boolean changed);
 }

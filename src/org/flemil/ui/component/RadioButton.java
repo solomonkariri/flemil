@@ -32,6 +32,7 @@ public class RadioButton implements TextItem
 	private MenuItem markItem;
 	private ChoiceGroup group;
 	private boolean selectable=true;
+	private boolean textChanged;
 
 	/**
 	 * Sets the text.name of this RadioButton
@@ -361,5 +362,11 @@ public class RadioButton implements TextItem
 		displayRect.x+=dx;
 		displayRect.y+=dy;
 		nameDisplayer.moveRect(dx, dy);
+	}
+	public void setTextChanged(boolean textChanged) {
+		this.textChanged = textChanged;
+	}
+	public boolean isTextChanged() {
+		return textChanged;
 	}
 }

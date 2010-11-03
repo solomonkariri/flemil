@@ -26,7 +26,7 @@ import org.flemil.util.Rectangle;
  * @author Solomon Kariri
  *
  */
-public interface Scrollable extends Item 
+public interface Scrollable extends Container
 {
 	/**
 	 * Used to denote scrolling in the x direction. Scrolling can be 
@@ -66,5 +66,5 @@ public interface Scrollable extends Item
 	public void setHorScrolling(boolean horScrolling);
 	
 	public void scrollContentsVertically(int change);
-	public void acrollContentsHorizontally(int change);
+	public void scrollContentsHorizontally(int change);
 }

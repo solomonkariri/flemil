@@ -18,14 +18,33 @@ public class TextScroller implements Runnable{
         {
             return;
         }
-        //for as long as this window is focussed
-        textItem.setScrolling(true);
+        if(textItem.getTextWidth()>textItem.getDisplayRect().width-2 && textItem.isFocussed())
+        {
+            textItem.setScrolling(true);
+        }
         //the variable for the increment
         int increment=-GlobalControl.getTextScrollSpeed();
         while(textItem.isFocussed() && textItem.isScrolling())
         {
-            //calculate the between name and available display area
-            int diff=textItem.getTextWidth()-textItem.getDisplayRect().width;
+        	if(textItem.isTextChanged()){
+        		textItem.setTextChanged(false);
+        	}
+        	if(textItem.getTextWidth()<=textItem.getDisplayRect().width-2)
+            {
+                break;
+            }
+        	//calculate the between name and available display area
+        	int diff=textItem.getTextWidth()-textItem.getDisplayRect().width+2;
+        	if(textItem.isTextChanged())
+        	{
+        		textItem.setTextIndent(0);
+        		if(diff<=0)
+        		{
+        			textItem.repaint(textItem.getDisplayRect());
+        			break;
+        		}
+        	}
+            
             try
             {
                 Thread.sleep(100);
@@ -41,7 +60,13 @@ public class TextScroller implements Runnable{
             textItem.setTextIndent(textItem.getTextIndent()+increment);
             textItem.repaint(textItem.getDisplayRect());
         }
-        textItem.setTextIndent(0);
         textItem.setScrolling(false);
+        if(textItem.getTextWidth()>textItem.getDisplayRect().width-2 
+        		&& textItem.isFocussed())
+        {
+            textItem.setTextChanged(true);
+            new Thread(new TextScroller(textItem)).start();
+        }
+        textItem.setTextIndent(0);
 	}
 }

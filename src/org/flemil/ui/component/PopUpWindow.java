@@ -303,10 +303,7 @@ public class PopUpWindow implements Window {
 	}
 	public void setDisplayRect(Rectangle rect)
     {
-		if(!displayRect.equals(rect))
-		{
-			displayRect=rect;
-		}
+		displayRect=rect;
         //set the three rects respectively
         //title bar rect
         if(showTitleBar)

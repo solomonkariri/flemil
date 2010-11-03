@@ -408,17 +408,7 @@ public class ScreenWindow implements Window
       //set the display rect for any popup showing
         if(currentPopUp!=null)
         {
-        	Rectangle popRect=new Rectangle();
-        	popRect.x=bodyRect.x+8;
-        	popRect.width=bodyRect.width-16;
-        	popRect.y=bodyRect.y+8;
-        	popRect.height=bodyRect.height-16;
-        	Rectangle min=currentPopUp.getMinimumDisplayRect(popRect.width);
-        	popRect.width=min.width<popRect.width?min.width:popRect.width;
-        	popRect.height=min.height<popRect.height?min.height:popRect.height;
-        	popRect.x=bodyRect.x+(bodyRect.width-popRect.width)/2;
-        	popRect.y=bodyRect.y+(bodyRect.height-popRect.height)/2;
-        	currentPopUp.setDisplayRect(popRect);
+        	setCurrentPopupRect();
         }
         setTitle(getTitle());
         if(focussed)repaint(displayRect); 
@@ -453,13 +443,7 @@ public class ScreenWindow implements Window
     public void focusGained()
     {
     	focussed=true;
-    	titleWidth=((Font)GlobalControl.getControl().getStyle().getProperty(
-                Style.WINDOW_TITLE_FONT)).stringWidth(this.title);
-        int diff=titleWidth-displayRect.width;
-        if(diff>0)
-        { 
-            new Thread(new TitleScroller()).start();
-        }
+    	setTitle(title);
         contentPane.focusGained();
         repaint(displayRect);
     }
@@ -518,10 +502,9 @@ public class ScreenWindow implements Window
 	}
 	public void setTitle(String title) {
 		this.title=title;
-		titleChanged=true;
-		scrolling=false;
 		this.titleWidth=((Font)GlobalControl.getControl().getStyle().getProperty(
                 Style.WINDOW_TITLE_FONT)).stringWidth(this.title);
+		titleChanged=true;
         if(titleWidth>titlebarRect.width-2)
         {
             new Thread(new TitleScroller()).start();
@@ -540,20 +523,25 @@ public class ScreenWindow implements Window
             {
                 return;
             }
-            //for as long as this window is focussed
-            if(focussed)
+            if(titleWidth>titlebarRect.width-2 && focussed)
             {
-            	scrolling=true;
+                scrolling=true;
             }
             //the variable for the increment
             int increment=-GlobalControl.getTextScrollSpeed();
             while(focussed && scrolling)
             {
+            	if(titleChanged){
+            		titleChanged=false;
+            	}
+            	if(titleWidth<=titlebarRect.width)
+                {
+                    break;
+                }
             	//calculate the between name and available display area
             	int diff=titleWidth-titlebarRect.width+2;
             	if(titleChanged)
             	{
-            		titleChanged=false;
             		titleIndent=0;
             		if(diff<=0)
             		{
@@ -581,6 +569,12 @@ public class ScreenWindow implements Window
                 titleIndent+=increment;
                 repaint(ScreenWindow.this.titlebarRect);
             }
+            scrolling=false;
+            if(titleWidth>titlebarRect.width-2 && focussed)
+            {
+                titleChanged=true;
+                new Thread(new TitleScroller()).start();
+            }
             titleIndent=0;
         }
     }
@@ -604,20 +598,7 @@ public class ScreenWindow implements Window
         	setMenuRect(currentMenu);
         	popups.addElement(window);
         	//set the display rect for any popup showing
-            if(currentPopUp!=null)
-            {
-            	Rectangle popRect=new Rectangle();
-            	popRect.x=bodyRect.x+8;
-            	popRect.width=bodyRect.width-16;
-            	popRect.y=bodyRect.y+8;
-            	popRect.height=bodyRect.height-16;
-            	Rectangle min=currentPopUp.getMinimumDisplayRect(popRect.width);
-            	popRect.width=min.width<popRect.width?min.width:popRect.width;
-            	popRect.height=min.height<popRect.height?min.height:popRect.height;
-            	popRect.x=bodyRect.x+(bodyRect.width-popRect.width)/2;
-            	popRect.y=bodyRect.y+(bodyRect.height-popRect.height)/2;
-            	currentPopUp.setDisplayRect(popRect);
-            }
+            setCurrentPopupRect();
         	if(focussed){currentPopUp.focusGained(); repaint(displayRect);}
     	}
     }
@@ -639,6 +620,7 @@ public class ScreenWindow implements Window
         		currentPopUp=(PopUpWindow)popups.elementAt(popups.size()-1);
             	currentMenu=currentPopUp.getMenu();
             	setMenuRect(currentMenu);
+            	setCurrentPopupRect();
             	if(focussed)currentPopUp.focusGained();
         	}
         	else
@@ -651,6 +633,21 @@ public class ScreenWindow implements Window
         	repaint(displayRect);
     	}
     }
+	private void setCurrentPopupRect() {
+		if(currentPopUp!=null){
+			Rectangle popRect=new Rectangle();
+	    	popRect.x=bodyRect.x+8;
+	    	popRect.width=bodyRect.width-16;
+	    	popRect.y=bodyRect.y+8;
+	    	popRect.height=bodyRect.height-16;
+	    	Rectangle min=currentPopUp.getMinimumDisplayRect(popRect.width);
+	    	popRect.width=min.width<popRect.width?min.width:popRect.width;
+	    	popRect.height=min.height<popRect.height?min.height:popRect.height;
+	    	popRect.x=bodyRect.x+(bodyRect.width-popRect.width)/2;
+	    	popRect.y=bodyRect.y+(bodyRect.height-popRect.height)/2;
+	    	currentPopUp.setDisplayRect(popRect);
+		}
+	}
 	public void menuRightSelected() {
 		
 	}

@@ -36,7 +36,7 @@ public class ComboBox implements TextItem {
 	private Vector elements=new Vector();
 	private MenuItem selectItem;
 	private MenuItem cancelItem;
-	
+	private boolean textChanged;
 	/**
 	 * Creates a new ComboBox with no entries
 	 */
@@ -160,7 +160,7 @@ public class ComboBox implements TextItem {
 		if(elements.isEmpty())return;
 		ChoiceGroup grp=new ChoiceGroup();
 		final List list=new List();
-	//	list.setWraps(true);
+		list.setWraps(true);
 		list.setPaintBorder(false);
 		Enumeration en=elements.elements();
 		final PopUpWindow pop=new PopUpWindow("",false);
@@ -436,5 +436,13 @@ public class ComboBox implements TextItem {
 		currentObject=null;
 		elements.removeAllElements();
 		repaint(displayRect);
+	}
+
+	public void setTextChanged(boolean textChanged) {
+		this.textChanged = textChanged;
+	}
+
+	public boolean isTextChanged() {
+		return textChanged;
 	}
 }

@@ -19,6 +19,8 @@
 package org.flemil.control;
 
 
+import java.util.Vector;
+
 import javax.microedition.lcdui.Canvas;
 import javax.microedition.lcdui.Display;
 import javax.microedition.lcdui.Font;
@@ -120,7 +122,7 @@ public class GlobalControl
     //the variable to keep track of the scrolling speed for elements
     private static int itemTextScrollSpeed=3;
     //variable to manipulate scroll speeds of items in a panel
-    private static int panelScrollSpeed=5;
+    private static int panelScrollSpeed=14;
     
     //variable for whether fading is enabled
     private boolean fading;
@@ -144,7 +146,6 @@ public class GlobalControl
         displayArea=new Rectangle();
         displayArea.width=mainCanvas.getWidth();
         displayArea.height=mainCanvas.getHeight();
-        globalStyle=Style.getDefault();
         initBGrounds();
         initControlsBGrounds();
     }
@@ -759,6 +760,7 @@ public class GlobalControl
      */
     public void setLayout(byte layout)
     {
+    	boolean switched=false;
     	settingLayout=true;
     	byte oldLayout=this.layout;
 		this.layout=layout;
@@ -768,6 +770,7 @@ public class GlobalControl
             displayArea.width=displayArea.height;
             displayArea.height=temp;
             bufferImg=Image.createImage(displayArea.width, displayArea.height);
+            switched=true;
         }
 		setFading(fading);
 		if(currentWindow!=null)
@@ -791,6 +794,16 @@ public class GlobalControl
         settingLayout=false;
         if(currentWindow!=null){
         	currentWindow.focusGained();
+        }
+        if(switched){
+        	new Thread(new Runnable() {
+				public void run() {
+					int size=layoutSwitchListeners.size();
+					for(int i=0;i<size;i++){
+						((LayoutSwitchListener)layoutSwitchListeners.elementAt(i)).layoutChanged();
+					}
+				}
+			}).start();
         }
     }
     /**
@@ -895,6 +908,7 @@ public class GlobalControl
     	}
     	bufferImg=Image.createImage(displayArea.width, displayArea.height);
     	refreshLayout();
+    	mainCanvas.setFullScreenMode(true);
 	}
 	public class MainCanvas extends Canvas
     {
@@ -942,10 +956,24 @@ public class GlobalControl
         }
         public void sizeChanged(int newWidth,int newHeight)
         {
+        	if(mainCanvas.equals(display.getCurrent()))return;
         	GlobalControl.this.sizeChanged(newWidth, newHeight);
         }
     }
 	public void refreshLayout() {
 		setLayout(layout);
+	}
+	
+	private Vector layoutSwitchListeners=new Vector();
+	
+	public void addLayoutSwitchListener(LayoutSwitchListener listener){
+		layoutSwitchListeners.addElement(listener);
+	}
+	public void removeLayoutSwitchListener(LayoutSwitchListener listener){
+		layoutSwitchListeners.removeElement(listener);
+	}
+	
+	public interface LayoutSwitchListener{
+		public void layoutChanged();
 	}
 }

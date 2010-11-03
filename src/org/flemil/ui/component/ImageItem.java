@@ -8,6 +8,7 @@ import javax.microedition.lcdui.game.Sprite;
 import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
 import org.flemil.event.ImageItemListener;
+import org.flemil.ui.Container;
 import org.flemil.ui.Item;
 import org.flemil.util.Rectangle;
 
@@ -77,7 +78,7 @@ public class ImageItem implements Item
 				return new Rectangle(0,0,availWidth,height);
 			}
 			else{
-				return new Rectangle(0, 0, availWidth, this.image.getHeight());
+				return new Rectangle(0, 0, availWidth, this.image.getHeight()+6);
 			}
 		}
 		else
@@ -132,27 +133,17 @@ public class ImageItem implements Item
     				getProperty(Style.CURVES_RADIUS)).intValue();
         	g.setClip(intersect.x, intersect.y, intersect.width, intersect.height);
         	g.setColor(focussed?((Integer)GlobalControl.getControl().getStyle().
-    				getProperty(Style.COMPONENT_FOCUS_BACKGROUND)).intValue():
+    				getProperty(Style.COMPONENT_FOCUS_OUTLINE_COLOR)).intValue():
     					((Integer)GlobalControl.getControl().getStyle().
-    				getProperty(Style.COMPONENT_BACKGROUND)).intValue());
-        	if(paintBorder && !focussed)
-    		{
-        		g.drawRoundRect(this.displayRect.x, displayRect.y, 
-        				displayRect.width-1, displayRect.height-1,
+    				getProperty(Style.COMPONENT_OUTLINE_COLOR)).intValue());
+        	if(paintBorder){
+        		g.drawRoundRect(this.displayRect.x+1, displayRect.y+1, 
+        				displayRect.width-2, displayRect.height-2,
         				radius, radius);
-    		}
-    		else if(focusible)
-    		{
-    			g.fillRoundRect(displayRect.x, displayRect.y, 
-        				displayRect.width-1, displayRect.height-1,
-        				radius, radius);
-    		}
+        	}
         	if(drawnImage!=null)
         	{
-        		g.setClip(intersect.x>displayRect.x+2?intersect.x:displayRect.x+2, 
-        				intersect.y>displayRect.y+2?intersect.y:displayRect.y+2,
-        				intersect.width<displayRect.width-radius?intersect.width:displayRect.width-radius, 
-        				intersect.height<displayRect.height-radius?intersect.height:displayRect.height-radius);
+        		g.setClip(intersect.x, intersect.y,intersect.width,intersect.height);
         		g.drawImage(drawnImage, displayRect.x+displayRect.width/2-drawnImage.getWidth()/2,
             			displayRect.y+displayRect.height/2-drawnImage.getHeight()/2, 
             			Graphics.TOP|Graphics.LEFT);
@@ -282,9 +273,25 @@ public class ImageItem implements Item
 	}
 	public void setImage(Image image) {
 		this.image=image;
+		if(displayRect.width<=1)return;
 		this.drawnImage=null;
-		this.displayRect.width=1;
-		GlobalControl.getControl().refreshLayout();
+		int currentHeight=displayRect.height;
+		if(resizeToFit){
+			int height=(image.getHeight()*displayRect.width)/image.getWidth();
+			drawnImage=GlobalControl.getImageFactory().scaleImage(image, 
+					displayRect.width, height, Sprite.TRANS_NONE);
+		}
+		else
+		{
+			drawnImage=image;
+		}
+		int newHeight=drawnImage.getHeight();
+		if(newHeight!=currentHeight){
+			int diff=Math.abs(newHeight-currentHeight);
+			diff=newHeight-currentHeight;
+			displayRect.height=newHeight;
+			((Container)parent).itemHeightChanged(this, diff);
+		}
 	}
 	public void moveRect(int dx, int dy) {
 		displayRect.x+=dx;

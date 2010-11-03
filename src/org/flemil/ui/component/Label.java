@@ -8,6 +8,7 @@ import javax.microedition.lcdui.Graphics;
 import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
 import org.flemil.i18n.LocaleManager;
+import org.flemil.ui.Container;
 import org.flemil.ui.Item;
 import org.flemil.ui.TextItem;
 import org.flemil.util.Rectangle;
@@ -36,6 +37,7 @@ public class Label implements TextItem
 	private boolean scrolling;
 	private int lastAvail;
 	private int lastWid;
+	private boolean textChanged;
 	
 	public boolean isFocusible() {
 		return focusible;
@@ -54,16 +56,16 @@ public class Label implements TextItem
                 Style.ITEM_FONT);
         //Initialize display rect
         displayRect=new Rectangle();
-        textWidth=font.stringWidth(text);
+        textWidth=font.stringWidth(text)+2;
 	}
 	public void focusGained() 
 	{
 		Font font=fontSet?this.font:(Font)GlobalControl.getControl().getStyle().getProperty(
                 Style.ITEM_FONT);
+		textWidth=font.stringWidth(text)+2;
 		if(isFocusible())
 		{
 			focussed=true;
-			textWidth=font.stringWidth(text)+2;
 	        repaint(displayRect);
 	        if(!textWraps)
 	        {
@@ -93,7 +95,7 @@ public class Label implements TextItem
 		Font font=fontSet?this.font:(Font)GlobalControl.getControl().getStyle().getProperty(
                 Style.ITEM_FONT);
 		if(lastAvail==availWidth && lastWid==font.stringWidth(text)
-				&& displayRect.width==availWidth)
+				&& displayRect.width==availWidth && !splitIndecies.isEmpty())
 		{
 			return displayRect;
 		}
@@ -104,36 +106,58 @@ public class Label implements TextItem
 			return new Rectangle(0,0,availWidth,font.getHeight()+4);
 		}
 		splitIndecies.removeAllElements();
-		int counts=textWidth/(availWidth-2);
-		if(counts>0){
-			int index=text.length()/counts;
-			int track=0;
-			for(int i=0;i<counts;i++){
-				int test=track+index-1;
-				while(test>text.length())test--;
-				String testString=text.substring(track, test);
-				while(font.stringWidth(testString)>availWidth-2 && test<text.length()){
-					test--;
-					testString=text.substring(track, test);
-				}
-				while(font.stringWidth(testString)<availWidth-2){
-					if(test>=text.length())break;
-					test++;
-					testString=text.substring(track, test);
-				}
-				if(test==text.length()){
-					if(font.stringWidth(testString)>availWidth-2){
-						splitIndecies.addElement(new Integer(test-1));
+		
+		if(textWraps){
+			Vector newLineSplits=new Vector();
+			String temp=new String(text);
+			int index=temp.indexOf('\n');
+			while(index!=-1){
+				newLineSplits.addElement(temp.substring(0, index).trim());
+				temp=temp.substring(index+1);
+				index=temp.indexOf('\n');
+			}
+			if(temp.length()>0)
+			newLineSplits.addElement(temp.trim());
+			
+			int size=newLineSplits.size();
+			for(int i=0;i<size;i++){
+				String current=newLineSplits.elementAt(i).toString();
+				int textWid=font.stringWidth(current);
+				if(textWid>=availWidth-2){ 
+					while(textWid>=availWidth-2){
+						int test=(current.length()*availWidth)/textWid;
+						while(test>current.length())test--;
+						String testString=current.substring(0, test);
+						while(font.stringWidth(testString)>=availWidth-2){
+							test--;
+							testString=current.substring(0, test);
+						}
+						textWid=font.stringWidth(testString);
+						while(textWid<availWidth-2){
+							test++;
+							if(test>current.length())break;
+							testString=current.substring(0, test);
+							textWid=font.stringWidth(testString);
+						}
+						if(test>current.length())break;
+						if(current.charAt(test-1)!=' '){
+							int spaceIndex=current.substring(0, test-1).lastIndexOf(' ');
+							if(spaceIndex!=-1){
+								test=spaceIndex+1;
+							}
+						}
+						test--;
+						splitIndecies.addElement(current.substring(0, test).trim());
+						current=current.substring(test).trim();
+						textWid=font.stringWidth(current);
 					}
-					break;
+					if(current.length()>0)splitIndecies.addElement(current.trim());
 				}
 				else{
-					splitIndecies.addElement(new Integer(test-1));
-					track=test-1;
+					splitIndecies.addElement(current);
 				}
 			}
 		}
-		splitIndecies.addElement(new Integer(text.length()));
 		Rectangle minRect=new Rectangle();
         minRect.height=textWraps?(font.getHeight()+4)*splitIndecies.size():font.getHeight()+2;
         minRect.width=availWidth;
@@ -174,56 +198,41 @@ public class Label implements TextItem
     				getProperty(Style.COMPONENT_FOCUS_FOREGROUND)).intValue():
     					((Integer)GlobalControl.getControl().getStyle().
     				getProperty(Style.COMPONENT_FOREGROUND)).intValue());
-            StringBuffer buff=new StringBuffer();
-            buff.append(text);
             if(textWraps)
             {
             	if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
             		int txtStart=displayRect.x+1;
-                	int start=0;
-            		int end=0;
-                	for(int i=0;i<splitIndecies.size();i++)
+            		int size=splitIndecies.size();
+                	for(int i=0;i<size;i++)
                 	{
-                		end=((Integer)splitIndecies.elementAt(i)).intValue();
-                		if(end==buff.length() || 
-                				font.stringWidth(buff.toString().substring(start, end))<displayRect.width-2)
+                		String currentString=splitIndecies.elementAt(i).toString();
+                		if(i==size-1 || 
+                				font.stringWidth(currentString)<displayRect.width-2)
                         {
                         	switch (alignment) {
         					case TextItem.ALIGN_RIGHT:
         						txtStart=displayRect.x+displayRect.width-
-        						font.stringWidth(buff.toString().substring(start,end))-1;
+        						font.stringWidth(currentString)-1;
         						break;
         					case TextItem.ALIGN_CENTER:
         						txtStart=displayRect.x+
-        						(displayRect.width-font.stringWidth(buff.toString().substring(start,end)))/2;
+        						(displayRect.width-font.stringWidth(currentString))/2;
         						break;
         					}
                         }
-                		int tmp=end;
-                		while(tmp>start && buff.charAt(tmp-1)=='\n')
-                		{
-                			tmp--;
-                		}
-                		g.drawString(buff.toString().substring(start, tmp), txtStart, 
+                		g.drawString(currentString, txtStart, 
                         		displayRect.y+2+(i*(font.getHeight()+4)), Graphics.TOP|Graphics.LEFT);
-                		start=end;
                 	}
             	}
             	else{
-            		int start=0;
-            		int end=0;
-                	for(int i=0;i<splitIndecies.size();i++)
+            		int size=splitIndecies.size();
+                	for(int i=0;i<size;i++)
                 	{
+                		String currentString=splitIndecies.elementAt(i).toString();
                 		int txtStart=displayRect.x+displayRect.width-1;
-                		end=((Integer)splitIndecies.elementAt(i)).intValue();
-                		int tmp=end;
-                		while(tmp>start && buff.charAt(tmp-1)=='\n')
-                		{
-                			tmp--;
-                		}
-                		txtStart-=font.stringWidth(buff.toString().substring(start, tmp));
-                		if(end==buff.length() || 
-                				font.stringWidth(buff.toString().substring(start, tmp))<displayRect.width-2)
+                		txtStart-=font.stringWidth(currentString);
+                		if(i==size-1 || 
+                				font.stringWidth(currentString)<displayRect.width-2)
                         {
                         	switch (alignment) {
         					case TextItem.ALIGN_LEFT:
@@ -231,13 +240,12 @@ public class Label implements TextItem
         						break;
         					case TextItem.ALIGN_CENTER:
         						txtStart=displayRect.x+
-        						(displayRect.width-font.stringWidth(buff.toString().substring(start,tmp)))/2;
+        						(displayRect.width-font.stringWidth(currentString))/2;
         						break;
         					}
                         }
-                		g.drawString(buff.toString().substring(start, tmp), txtStart, 
+                		g.drawString(currentString, txtStart, 
                         		displayRect.y+2+(i*(font.getHeight()+4)), Graphics.TOP|Graphics.LEFT);
-                		start=end;
                 	}
             	}
             }
@@ -256,12 +264,12 @@ public class Label implements TextItem
     						(displayRect.width-font.stringWidth(text))/2;
     						break;
     					}
-    					g.drawString(buff.toString(), txtStart, 
+    					g.drawString(text, txtStart, 
                         		displayRect.y+2, Graphics.TOP|Graphics.LEFT);
             		}
             		else{
             			int txtStart=displayRect.x+displayRect.width-1-
-            			font.stringWidth(buff.toString());
+            			font.stringWidth(text.toString());
 					switch (alignment) {
 					case TextItem.ALIGN_LEFT:
 						txtStart=displayRect.x+1;
@@ -271,20 +279,20 @@ public class Label implements TextItem
 						(displayRect.width-font.stringWidth(text))/2;
 						break;
 					}
-					g.drawString(buff.toString(), txtStart, 
+					g.drawString(text, txtStart, 
                     		displayRect.y+2, Graphics.TOP|Graphics.LEFT);
             		}
             	}
             	else{
             		if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
-            			g.drawString(buff.toString(), displayRect.x+textIndent+1,
+            			g.drawString(text, displayRect.x+textIndent+1,
                     			displayRect.y+2,
                     			Graphics.TOP|Graphics.LEFT);
             		}
             		else{
             			int txtStart=displayRect.x+displayRect.width-1-
-            			font.stringWidth(buff.toString())-textIndent;
-            			g.drawString(buff.toString(), txtStart,
+            			font.stringWidth(text)-textIndent;
+            			g.drawString(text, txtStart,
             					displayRect.y+2,
             					Graphics.TOP|Graphics.LEFT);
             		}
@@ -318,14 +326,12 @@ public class Label implements TextItem
 	{	
 		Font font=fontSet?this.font:(Font)GlobalControl.getControl().getStyle().getProperty(
                 Style.ITEM_FONT);
+		textWidth=font.stringWidth(text)+2;
 		textIndent=0;
         textWidth=font.stringWidth(text)+2;
-        if(textWidth<rect.width || textWraps)
+        if(!textWraps && focusible && focussed)
         {
-            scrolling=false;
-        }
-        else if(focusible && focussed && !scrolling)
-        {
+        	textChanged=true;
         	displayRect=rect;
             new Thread(new TextScroller(this)).start();
             return;
@@ -338,34 +344,30 @@ public class Label implements TextItem
 		this.parent=parent;
 	}
 	public void setText(String text) {
+		splitIndecies.removeAllElements();
+		this.text=text;
 		Font font=fontSet?this.font:(Font)GlobalControl.getControl().getStyle().getProperty(
                 Style.ITEM_FONT);
 		textWidth=font.stringWidth(text)+2;
-		int test=textWidth/(displayRect.width-2);
-		if(textWidth%(displayRect.width-2)!=0){
-			test++;
+		if(textWraps && parent!=null){
+			new Thread(new Runnable() {
+				public void run() {
+					int currentHeight=displayRect.height;
+					int newHeight=getMinimumDisplayRect(displayRect.width).height;
+					int diff=Math.abs(newHeight-currentHeight);
+					Font font=fontSet?Label.this.font:(Font)GlobalControl.getControl().getStyle().getProperty(
+			                Style.ITEM_FONT);
+					if(diff>font.getHeight()/2){
+						diff=newHeight-currentHeight;
+						displayRect.height=newHeight;
+						((Container)parent).itemHeightChanged(Label.this, diff);
+					}
+				}
+			}).start(); 
 		}
-		if(test==splitIndecies.size()){
-			this.text=text;
-			splitIndecies.removeElementAt(splitIndecies.size()-1);
-			splitIndecies.addElement(new Integer(this.text.length()));
-			if(!textWraps && focussed)
-			{
-				scrolling=false;
-				int diff=textWidth-displayRect.width;
-	            if(diff>0)
-	            {
-	                new Thread(new TextScroller(this)).start();
-	            }
-			}
-			repaint(displayRect);
-			return;
-		}
-		this.text=text;
-		if(textWraps && parent!=null)GlobalControl.getControl().refreshLayout();
 		else if(focussed)
 		{
-			scrolling=false;
+			textChanged=true;
 			int diff=textWidth-displayRect.width;
             if(diff>0)
             {
@@ -432,5 +434,11 @@ public class Label implements TextItem
 	public void moveRect(int dx, int dy) {
 		displayRect.x+=dx;
 		displayRect.y+=dy;
+	}
+	public void setTextChanged(boolean textChanged) {
+		this.textChanged = textChanged;
+	}
+	public boolean isTextChanged() {
+		return textChanged;
 	}
 }

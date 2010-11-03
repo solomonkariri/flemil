@@ -22,9 +22,8 @@ public class RMSUtil {
 	private static final String STYLE_INDEX="FLE_STY_IND";
 	public synchronized static boolean saveStyle(Style style,String name,String id,String owner)
 	{
-		try {
-			RecordStore libStore=RecordStore.openRecordStore(RMSUtil.RMS_NAME, true);
-			libStore.setMode(RecordStore.AUTHMODE_PRIVATE, true);
+		try { 
+			RecordStore libStore=RecordStore.openRecordStore(RMSUtil.RMS_NAME, true,RecordStore.AUTHMODE_ANY,true);
 			int count=libStore.getNumRecords();
 			boolean found=false;
 			for(int i=1;i<count+1;i++)
@@ -127,8 +126,7 @@ public class RMSUtil {
 	{
 		Vector saved=new Vector();
 		try {
-			RecordStore libStore=RecordStore.openRecordStore(RMSUtil.RMS_NAME, true);
-			libStore.setMode(RecordStore.AUTHMODE_PRIVATE, true);
+			RecordStore libStore=RecordStore.openRecordStore(RMSUtil.RMS_NAME, true,RecordStore.AUTHMODE_ANY,true);
 			int count=libStore.getNumRecords();
 			for(int i=1;i<count+1;i++)
 			{
@@ -161,8 +159,7 @@ public class RMSUtil {
 	{
 		Style style=null;
 		try {
-			RecordStore libStore=RecordStore.openRecordStore(RMSUtil.RMS_NAME, true);
-			libStore.setMode(RecordStore.AUTHMODE_PRIVATE, true);
+			RecordStore libStore=RecordStore.openRecordStore(RMSUtil.RMS_NAME, true,RecordStore.AUTHMODE_ANY,true);
 			int count=libStore.getNumRecords();
 			for(int i=1;i<count+1;i++)
 			{
@@ -192,8 +189,7 @@ public class RMSUtil {
 	public synchronized static boolean deleteStyle(String id)
 	{
 		try {
-			RecordStore libStore=RecordStore.openRecordStore(RMSUtil.RMS_NAME, true);
-			libStore.setMode(RecordStore.AUTHMODE_PRIVATE, true);
+			RecordStore libStore=RecordStore.openRecordStore(RMSUtil.RMS_NAME, true,RecordStore.AUTHMODE_ANY,true);
 			int count=libStore.getNumRecords();
 			for(int i=1;i<count+1;i++)
 			{

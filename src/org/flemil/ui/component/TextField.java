@@ -18,6 +18,7 @@ import javax.microedition.lcdui.TextBox;
 import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
 import org.flemil.i18n.LocaleManager;
+import org.flemil.ui.Container;
 import org.flemil.ui.Item;
 import org.flemil.ui.TextItem;
 import org.flemil.util.Rectangle;
@@ -54,6 +55,7 @@ public class TextField implements TextItem
 	private boolean fontSet;
 	private int lastAvail;
 	private int lastWid;
+	private boolean textChanged;
 	/**
 	 * Creates a new TextField with the passed in parameters
 	 * @param text the initial Text to be shown by this TextField
@@ -70,7 +72,7 @@ public class TextField implements TextItem
 		this.maxSize=maxSize;
 		this.font=(Font)GlobalControl.getControl().getStyle().getProperty(
                 Style.ITEM_FONT);
-		textWidth=font.stringWidth(text);
+		textWidth=font.stringWidth(text)+2;
 	}
 	
 	public boolean isTextWraps() {
@@ -95,6 +97,7 @@ public class TextField implements TextItem
         repaint(displayRect);
         if(!textWraps)
         {
+        	textChanged=true;
         	int diff=textWidth-displayRect.width;
             if(diff>0)
             {
@@ -127,8 +130,9 @@ public class TextField implements TextItem
 		if(availWidth<=1)return new Rectangle(); 
 		Font font=fontSet?this.font:(Font)GlobalControl.getControl().getStyle().getProperty(
                 Style.ITEM_FONT);
+		textWidth=font.stringWidth(text)+2;
 		if(lastAvail==availWidth && lastWid==font.stringWidth(text)
-				&& displayRect.width==availWidth)
+				&& displayRect.width==availWidth && !splitIndecies.isEmpty())
 		{
 			return displayRect;
 		}
@@ -139,36 +143,64 @@ public class TextField implements TextItem
 			return new Rectangle(0,0,availWidth,font.getHeight()+4);
 		}
 		splitIndecies.removeAllElements();
-		int counts=textWidth/(availWidth-2);
-		if(counts>0){
-			int index=text.length()/counts;
-			int track=0;
-			for(int i=0;i<counts;i++){
-				int test=track+index-1;
-				while(test>text.length())test--;
-				String testString=text.substring(track, test);
-				while(font.stringWidth(testString)>availWidth-2 && test<text.length()){
-					test--;
-					testString=text.substring(track, test);
-				}
-				while(font.stringWidth(testString)<availWidth-2){
-					if(test>=text.length())break;
-					test++;
-					testString=text.substring(track, test);
-				}
-				if(test==text.length()){
-					if(font.stringWidth(testString)>availWidth-2){
-						splitIndecies.addElement(new Integer(test-1));
+		
+		if(textWraps){
+			Vector newLineSplits=new Vector();
+			String temp=new String(text);
+			if((properties&javax.microedition.lcdui.TextField.PASSWORD)!=0){
+    			StringBuffer buf=new StringBuffer();
+    			int length=temp.length();
+    			for(int j=0;j<length;j++)buf.append("*");
+    			temp=buf.toString();
+    		}
+			int index=temp.indexOf('\n');
+			while(index!=-1){
+				newLineSplits.addElement(temp.substring(0, index).trim());
+				temp=temp.substring(index+1);
+				index=temp.indexOf('\n');
+			}
+			if(temp.length()>0)
+			newLineSplits.addElement(temp.trim());
+			
+			int size=newLineSplits.size();
+			for(int i=0;i<size;i++){
+				String current=newLineSplits.elementAt(i).toString();
+				int textWid=font.stringWidth(current);
+				if(textWid>=availWidth-2){ 
+					while(textWid>=availWidth-2){
+						int test=(current.length()*availWidth)/textWid;
+						while(test>current.length())test--;
+						String testString=current.substring(0, test);
+						while(font.stringWidth(testString)>=availWidth-2){
+							test--;
+							testString=current.substring(0, test);
+						}
+						textWid=font.stringWidth(testString);
+						while(textWid<availWidth-2){
+							test++;
+							if(test>current.length())break;
+							testString=current.substring(0, test);
+							textWid=font.stringWidth(testString);
+						}
+						if(test>current.length())break;
+						if(current.charAt(test-1)!=' '){
+							int spaceIndex=current.substring(0, test-1).lastIndexOf(' ');
+							if(spaceIndex!=-1){
+								test=spaceIndex+1;
+							}
+						}
+						test--;
+						splitIndecies.addElement(current.substring(0, test).trim());
+						current=current.substring(test).trim();
+						textWid=font.stringWidth(current);
 					}
-					break;
+					if(current.length()>0)splitIndecies.addElement(current.trim());
 				}
 				else{
-					splitIndecies.addElement(new Integer(test-1));
-					track=test-1;
+					splitIndecies.addElement(current);
 				}
 			}
 		}
-		splitIndecies.addElement(new Integer(text.length()));
 		Rectangle minRect=new Rectangle();
         minRect.height=textWraps?(font.getHeight()+4)*splitIndecies.size():font.getHeight()+2;
         minRect.width=availWidth;
@@ -214,6 +246,8 @@ public class TextField implements TextItem
 				LocaleManager.getTranslation("flemil.entertext"),text,maxSize,properties);
 		box.addCommand(new Command(
 				LocaleManager.getTranslation("flemil.ok"),Command.OK,1));
+		box.addCommand(new Command(
+				LocaleManager.getTranslation("flemil.cancel"),Command.CANCEL,1));
 		GlobalControl.getControl().getDisplay().setCurrent(box);
 		box.setCommandListener(new BoxListener());
 	}
@@ -258,64 +292,58 @@ public class TextField implements TextItem
     				getProperty(Style.COMPONENT_FOCUS_FOREGROUND)).intValue():
     					((Integer)GlobalControl.getControl().getStyle().
     				getProperty(Style.COMPONENT_FOREGROUND)).intValue());
-            StringBuffer buff=new StringBuffer();
-    		if((properties&javax.microedition.lcdui.TextField.PASSWORD)!=0)
-    				for(int i=0;i<text.length();i++)buff.append("*");
-    		else
-    			buff.append(text);
             if(textWraps)
             {
             	if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
             		int txtStart=displayRect.x+1;
-                	int start=0;
-            		int end=0;
-                	for(int i=0;i<splitIndecies.size();i++)
+                	int size=splitIndecies.size();
+                	for(int i=0;i<size;i++)
                 	{
-                		end=((Integer)splitIndecies.elementAt(i)).intValue();
-                		if(end==buff.length() || 
-                				font.stringWidth(buff.toString().substring(start, end))<displayRect.width-2)
+                		String currentString=splitIndecies.elementAt(i).toString();
+                		if((properties&javax.microedition.lcdui.TextField.PASSWORD)!=0){
+                			StringBuffer buf=new StringBuffer();
+                			int length=currentString.length();
+                			for(int j=0;j<length;j++)buf.append("*");
+                			currentString=buf.toString();
+                		}
+                		if(i==size-1 || 
+                				font.stringWidth(currentString)<displayRect.width-2)
                         {
                         	switch (alignment) {
         					case TextItem.ALIGN_RIGHT:
         						txtStart=displayRect.x+displayRect.width-
-        						font.stringWidth(buff.toString().substring(start,end))-1;
+        						font.stringWidth(currentString)-1;
         						break;
         					case TextItem.ALIGN_CENTER:
         						txtStart=displayRect.x+
-        						(displayRect.width-font.stringWidth(buff.toString().substring(start,end)))/2;
+        						(displayRect.width-font.stringWidth(currentString))/2;
         						break;
         					}
-                        	if(editable && focussed && end==buff.length())
-                        	g.drawLine(txtStart+font.stringWidth(buff.toString().substring(start, end)), 
+                        	if(editable && focussed && i==size-1)
+                        	g.drawLine(txtStart+font.stringWidth(currentString), 
                         			displayRect.y+2+i*(font.getHeight()+4), 
-                        			txtStart+font.stringWidth(buff.toString().substring(start, end)),
+                        			txtStart+font.stringWidth(currentString),
                         			displayRect.y+1+i*(font.getHeight()+4)+font.getHeight());
                         }
-                		int tmp=end;
-                		while(tmp>start && buff.charAt(tmp-1)=='\n')
-                		{
-                			tmp--;
-                		}
-                		g.drawString(buff.toString().substring(start, tmp), txtStart, 
+                		g.drawString(currentString, txtStart, 
                         		displayRect.y+2+(i*(font.getHeight()+4)), Graphics.TOP|Graphics.LEFT);
-                		start=end;
                 	}
             	}
             	else{
-            		int start=0;
-            		int end=0;
-                	for(int i=0;i<splitIndecies.size();i++)
+            		int size=splitIndecies.size();
+                	for(int i=0;i<size;i++)
                 	{
-                		int txtStart=displayRect.x+displayRect.width-1;
-                		end=((Integer)splitIndecies.elementAt(i)).intValue();
-                		int tmp=end;
-                		while(tmp>start && buff.charAt(tmp-1)=='\n')
-                		{
-                			tmp--;
+                		String currentString=splitIndecies.elementAt(i).toString();
+                		if((properties&javax.microedition.lcdui.TextField.PASSWORD)!=0){
+                			StringBuffer buf=new StringBuffer();
+                			int length=currentString.length();
+                			for(int j=0;j<length;j++)buf.append("*");
+                			currentString=buf.toString();
                 		}
-                		txtStart-=font.stringWidth(buff.toString().substring(start, tmp));
-                		if(end==buff.length() || 
-                				font.stringWidth(buff.toString().substring(start, tmp))<displayRect.width-2)
+                		int txtStart=displayRect.x+displayRect.width-1;
+                		txtStart-=font.stringWidth(currentString);
+                		if(i==size-1 || 
+                				font.stringWidth(currentString)<displayRect.width-2)
                         {
                         	switch (alignment) {
         					case TextItem.ALIGN_LEFT:
@@ -323,23 +351,29 @@ public class TextField implements TextItem
         						break;
         					case TextItem.ALIGN_CENTER:
         						txtStart=displayRect.x+
-        						(displayRect.width-font.stringWidth(buff.toString().substring(start,tmp)))/2;
+        						(displayRect.width-font.stringWidth(currentString))/2;
         						break;
         					}
-                        	if(editable && focussed && end==buff.length())
+                        	if(editable && focussed && i==size-1)
                         	g.drawLine(txtStart-1, 
                         			displayRect.y+2+i*(font.getHeight()+4), 
                         			txtStart-1,
                         			displayRect.y+1+i*(font.getHeight()+4)+font.getHeight());
                         }
-                		g.drawString(buff.toString().substring(start, tmp), txtStart, 
+                		g.drawString(currentString, txtStart, 
                         		displayRect.y+2+(i*(font.getHeight()+4)), Graphics.TOP|Graphics.LEFT);
-                		start=end;
                 	}
             	}
             }
             else
             {
+            	String currentString=new String(text);
+        		if((properties&javax.microedition.lcdui.TextField.PASSWORD)!=0){
+        			StringBuffer buf=new StringBuffer();
+        			int length=currentString.length();
+        			for(int j=0;j<length;j++)buf.append("*");
+        			currentString=buf.toString();
+        		}
             	if(textWidth<displayRect.width-2){
             		if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
             			int txtStart=displayRect.x+1;
@@ -353,7 +387,7 @@ public class TextField implements TextItem
     						(displayRect.width-font.stringWidth(text))/2;
     						break;
     					}
-    					g.drawString(buff.toString(), txtStart, 
+    					g.drawString(currentString, txtStart, 
                         		displayRect.y+2, Graphics.TOP|Graphics.LEFT);
     					if(editable && focussed)
                         	g.drawLine(txtStart+font.stringWidth(text), 
@@ -363,7 +397,7 @@ public class TextField implements TextItem
             		}
             		else{
             			int txtStart=displayRect.x+displayRect.width-1-
-            			font.stringWidth(buff.toString());
+            			font.stringWidth(currentString);
 					switch (alignment) {
 					case TextItem.ALIGN_LEFT:
 						txtStart=displayRect.x+1;
@@ -373,7 +407,7 @@ public class TextField implements TextItem
 						(displayRect.width-font.stringWidth(text))/2;
 						break;
 					}
-					g.drawString(buff.toString(), txtStart, 
+					g.drawString(currentString, txtStart, 
                     		displayRect.y+2, Graphics.TOP|Graphics.LEFT);
 					if(editable && focussed)
                     	g.drawLine(txtStart-1, 
@@ -384,7 +418,7 @@ public class TextField implements TextItem
             	}
             	else{
             		if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
-            			g.drawString(buff.toString(), displayRect.x+textIndent+1,
+            			g.drawString(currentString, displayRect.x+textIndent+1,
                     			displayRect.y+2,
                     			Graphics.TOP|Graphics.LEFT);
                     	if(focussed && editable)
@@ -395,8 +429,8 @@ public class TextField implements TextItem
             		}
             		else{
             			int txtStart=displayRect.x+displayRect.width-1-
-            			font.stringWidth(buff.toString())-textIndent;
-            			g.drawString(buff.toString(), txtStart,
+            			font.stringWidth(currentString)-textIndent;
+            			g.drawString(currentString, txtStart,
             					displayRect.y+2,
             					Graphics.TOP|Graphics.LEFT);
             			if(focussed && editable){
@@ -443,6 +477,7 @@ public class TextField implements TextItem
 	{	
 		Font font=fontSet?this.font:(Font)GlobalControl.getControl().getStyle().getProperty(
                 Style.ITEM_FONT);
+		textWidth=font.stringWidth(text)+2;
 		textIndent=0;
         textWidth=((properties&javax.microedition.lcdui.TextField.PASSWORD)!=0?
 				font.stringWidth("*")*text.length():font.stringWidth(text))+2;
@@ -450,7 +485,7 @@ public class TextField implements TextItem
         {
             scrolling=false;
         }
-        else if(focussed && !scrolling)
+        else if(focussed)
         {
         	displayRect=rect;
             new Thread(new TextScroller(this)).start();
@@ -464,35 +499,30 @@ public class TextField implements TextItem
 		this.parent=parent;
 	}
 	public void setText(String text) {
+		splitIndecies.removeAllElements();
+		this.text=text;
 		Font font=fontSet?this.font:(Font)GlobalControl.getControl().getStyle().getProperty(
                 Style.ITEM_FONT);
-		textWidth=((properties&javax.microedition.lcdui.TextField.PASSWORD)!=0?
-				this.font.stringWidth("*")*text.length():font.stringWidth(text))+2;
-		int test=textWidth/(displayRect.width-2);
-		if(textWidth%(displayRect.width-2)!=0){
-			test++;
+		textWidth=font.stringWidth(text)+2;
+		if(textWraps && parent!=null){
+			new Thread(new Runnable() {
+				public void run() {
+					int currentHeight=displayRect.height;
+					int newHeight=getMinimumDisplayRect(displayRect.width).height;
+					int diff=Math.abs(newHeight-currentHeight);
+					Font font=fontSet?TextField.this.font:(Font)GlobalControl.getControl().getStyle().getProperty(
+			                Style.ITEM_FONT);
+					if(diff>font.getHeight()/2){
+						diff=newHeight-currentHeight;
+						displayRect.height=newHeight;
+						((Container)parent).itemHeightChanged(TextField.this, diff);
+					}
+				}
+			}).start(); 
 		}
-		if(test==splitIndecies.size()){
-			this.text=text;
-			splitIndecies.removeElementAt(splitIndecies.size()-1);
-			splitIndecies.addElement(new Integer(this.text.length()));
-			if(!textWraps && focussed)
-			{
-				scrolling=false;
-				int diff=textWidth-displayRect.width;
-	            if(diff>0)
-	            {
-	                new Thread(new TextScroller(this)).start();
-	            }
-			}
-			repaint(displayRect);
-			return;
-		}
-		this.text=text;
-		if(textWraps && parent!=null)GlobalControl.getControl().refreshLayout();
 		else if(focussed)
 		{
-			scrolling=false;
+			textChanged=true;
 			int diff=textWidth-displayRect.width;
             if(diff>0)
             {
@@ -541,7 +571,27 @@ public class TextField implements TextItem
 							GlobalControl.getControl().getMainDisplayCanvas().setFullScreenMode(true);
 						}
 					}).start();
-					disp=null;
+				}catch(IllegalArgumentException iae){
+				}
+				Runtime.getRuntime().gc();
+			}
+			else{
+				try
+				{
+					GlobalControl.getControl().getDisplay().setCurrent(
+							GlobalControl.getControl().getMainDisplayCanvas());
+					new Thread(new Runnable() {
+						public void run() {
+							while(!GlobalControl.getControl().getMainDisplayCanvas().isShown()){
+								try {
+									Thread.sleep(5);
+								} catch (InterruptedException e) {
+									e.printStackTrace();
+								}
+							}
+							GlobalControl.getControl().getMainDisplayCanvas().setFullScreenMode(true);
+						}
+					}).start();
 				}catch(IllegalArgumentException iae){
 				}
 				Runtime.getRuntime().gc();
@@ -587,5 +637,13 @@ public class TextField implements TextItem
 	public void moveRect(int dx, int dy) {
 		displayRect.x+=dx;
 		displayRect.y+=dy;
+	}
+
+	public void setTextChanged(boolean textChanged) {
+		this.textChanged = textChanged;
+	}
+
+	public boolean isTextChanged() {
+		return textChanged;
 	}
 }

@@ -6,15 +6,17 @@ import javax.microedition.lcdui.Graphics;
 import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
 import org.flemil.i18n.LocaleManager;
+import org.flemil.ui.Container;
 import org.flemil.ui.Item;
 import org.flemil.ui.Scrollable;
+import org.flemil.ui.Window;
 import org.flemil.util.Rectangle;
 
 
 
 
 
-public class Grid implements Item
+public class Grid implements Container
 {
 	public static final byte ROW_SELECTION=1;
 	public static final byte COL_SELECTION=2;
@@ -31,12 +33,12 @@ public class Grid implements Item
 	private int currentCol;
 	private int itemsCount;
 	private boolean paintGrid;
-	private int colWid;
 	private int rowHei;
 	private boolean focussed;
 	private int[] distrib;
 	private byte selectionMode=Grid.CELL_SELECTION;
 	private boolean colWidsSet;
+	private Panel parentWindowPane;
 	
 	/**
 	 * Creates a new Grid with the specified number of rows and columns
@@ -483,7 +485,7 @@ public class Grid implements Item
 	        		else
 	        		{
 	        			currentRow=previousRow;
-	        			parent.keyPressedEventReturned(keyCode);
+	        			if(parent!=null)parent.keyPressedEventReturned(keyCode);
 	        		}
 	        		break;
 				}
@@ -510,13 +512,13 @@ public class Grid implements Item
 					}
 	        		else
 	        		{
-	        			parent.keyPressedEventReturned(keyCode);
+	        			if(parent!=null)parent.keyPressedEventReturned(keyCode);
 	        		}
 	        		break;
 				}
 				case Grid.COL_SELECTION:
 				{
-					parent.keyPressedEventReturned(keyCode);
+					if(parent!=null)parent.keyPressedEventReturned(keyCode);
 	        		break;
 				}
 				}
@@ -570,7 +572,7 @@ public class Grid implements Item
 	        		else
 	        		{
 	        			currentRow=previousRow;
-	        			parent.keyPressedEventReturned(keyCode);
+	        			if(parent!=null)parent.keyPressedEventReturned(keyCode);
 	        		}
 	        		break;
 				}
@@ -597,13 +599,13 @@ public class Grid implements Item
 					}
 	        		else
 	        		{
-	        			parent.keyPressedEventReturned(keyCode);
+	        			if(parent!=null)parent.keyPressedEventReturned(keyCode);
 	        		}
 	        		break;
 				}
 				case Grid.COL_SELECTION:
 				{
-					parent.keyPressedEventReturned(keyCode);
+					if(parent!=null)parent.keyPressedEventReturned(keyCode);
 	        		break;
 				}
 				}
@@ -631,13 +633,13 @@ public class Grid implements Item
 	        		}
 	        		else
 	        		{
-	        			parent.keyPressedEventReturned(keyCode);
+	        			if(parent!=null)parent.keyPressedEventReturned(keyCode);
 	        		}
 	        		break;
 				}
 				case Grid.ROW_SELECTION:
 				{
-					parent.keyPressedEventReturned(keyCode);
+					if(parent!=null)parent.keyPressedEventReturned(keyCode);
 	        		break;
 				}
 				case Grid.COL_SELECTION:
@@ -685,13 +687,13 @@ public class Grid implements Item
 					}
 	        		else
 	        		{
-	        			parent.keyPressedEventReturned(keyCode);
+	        			if(parent!=null)parent.keyPressedEventReturned(keyCode);
 	        		}
 	        		break;
 				}
 				case Grid.ROW_SELECTION:
 				{
-					parent.keyPressedEventReturned(keyCode);
+					if(parent!=null)parent.keyPressedEventReturned(keyCode);
 	        		break;
 				}
 				case Grid.COL_SELECTION:
@@ -719,7 +721,7 @@ public class Grid implements Item
             }
             default:
             {
-            	parent.keyPressedEventReturned(keyCode);
+            	if(parent!=null)parent.keyPressedEventReturned(keyCode);
             }
         }
         repaint(displayRect);
@@ -728,13 +730,23 @@ public class Grid implements Item
 	//fewer code
 	private void updateFocus()
 	{
+		if(parentWindowPane==null){
+    		Item test=parent;
+    		while(test!=null && !(test instanceof Window)){
+    			test=test.getParent();
+    		}
+    		if(test!=null){
+    			parentWindowPane=((Window)test).getContentPane();
+    		}
+    	}
+    	if(parentWindowPane==null)return;
 		switch (selectionMode) {
 		case Grid.CELL_SELECTION:
 			if(items[currentRow][currentCol]!=null)
 			{
 				items[currentRow][currentCol].focusGained();
-				if(displayRect.width>1 && parent instanceof Scrollable)
-			        ((Scrollable)parent).scrollRectToVisible(items[currentRow][currentCol].getDisplayRect(),
+				if(displayRect.width>1)
+		        	parentWindowPane.scrollRectToVisible(items[currentRow][currentCol].getDisplayRect(),
 			        		Scrollable.DIRECTION_X|Scrollable.DIRECTION_Y);
 			}
 			break;
@@ -753,7 +765,7 @@ public class Grid implements Item
 				curX+=(distrib[i]*displayRect.height)/100;
 			}
 			if(displayRect.width>1 && parent instanceof Scrollable)
-		        ((Scrollable)parent).scrollRectToVisible(
+	        	parentWindowPane.scrollRectToVisible(
 		        		new Rectangle(curX,displayRect.y , (distrib[currentCol]*displayRect.height)/100, 
 		        				displayRect.height),
 		        		Scrollable.DIRECTION_X|Scrollable.DIRECTION_Y);
@@ -767,8 +779,8 @@ public class Grid implements Item
 					items[currentRow][i].focusGained();
 				}
 			}
-			if(displayRect.width>1 && parent instanceof Scrollable)
-		        ((Scrollable)parent).scrollRectToVisible(
+			if(displayRect.width>1)
+				parentWindowPane.scrollRectToVisible(
 		        		new Rectangle(displayRect.x,displayRect.y+(rowHei*currentRow) ,
 		        				displayRect.width,rowHei),
 		        		Scrollable.DIRECTION_X|Scrollable.DIRECTION_Y);
@@ -844,8 +856,8 @@ public class Grid implements Item
         		}
         		for(int j=1;j<items[0].length;j++)
         		{
-        			g.drawLine(displayRect.x+j*colWid+j, 
-        					displayRect.y, displayRect.x+j*colWid+j, 
+        			int xStart=items[0][j-1].getDisplayRect().x+items[0][j-1].getDisplayRect().width;
+        			g.drawLine(xStart,displayRect.y, xStart, 
         					displayRect.y+displayRect.height);
         		}
         	}
@@ -937,10 +949,31 @@ public class Grid implements Item
 			}
 		}
 	}
-	public int getRowCount() {
+	public int getRowCount() { 
 		return rows;
 	}
 	public int getColCount() {
 		return cols;
+	}
+	public void itemHeightChanged(Item item, int change) {
+		int test=(displayRect.height-items.length)/items.length-(displayRect.height%items.length)-1;
+		Rectangle testRect=item.getDisplayRect();
+		boolean relayout = false;
+		if(testRect.height<test){
+			int previousHeight=testRect.height-change;
+			if(previousHeight>=test)relayout=true;
+		}
+		else if(testRect.height>test){
+			relayout=true;
+		}
+		if(relayout){
+			int currentHeight=displayRect.height;
+			Rectangle minRect=getMinimumDisplayRect(displayRect.width);
+			if(minRect.height!=currentHeight){
+				setDisplayRect(new Rectangle(displayRect.x, displayRect.y, displayRect.width, minRect.height));
+				int diff=minRect.height+1-currentHeight;
+				((Container)parent).itemHeightChanged(this, diff);
+			}
+		}
 	}
 }

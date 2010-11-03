@@ -23,12 +23,14 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector;
 
 import javax.microedition.lcdui.Font;
 
 import org.flemil.util.ImageFactory;
+import org.flemil.util.ResourcesFactory;
 
 
 
@@ -527,145 +529,114 @@ public class Style
     	table.put("button-lighting", new Byte((byte)59));
     	table.put("button-shading", new Byte((byte)60));
     	Style style=Style.getDefault();
-    	StringBuffer buffer=new StringBuffer();
-    	boolean set=false;
-    	while(true)
-    	{
-    		int read=is.read();
-    		if(read==-1){
-    			set=true;
-    			read='\n';
-    		}
-    		if('\n'==(char)read)
-    		{
-    			String readLine=buffer.toString();
-    			int index=readLine.indexOf("=");
-    			if(index!=-1)
-    			{
-    				String property=readLine.substring(0,index).toLowerCase().trim();
-    				String value=readLine.substring(index+1, readLine.length()).toLowerCase().trim();
-    				if(value.length()<1){buffer.delete(0, buffer.length()); if(set)break;else continue;}
-    				//check for possibility of being the outline
-    				if(table.containsKey(property))
-    				{
-    					int val=((Byte)table.get(property)).byteValue();
-    					switch(val)
-    					{
-    					case TITLE_BAR_SHADING:
-    					case MENU_BAR_SHADING:
-    					case MENU_ITEM_SHADING:
-    					case THEME_SHADING:
-    					case TAB_SHADING:
-    					case BUTTON_SHADING:
-    					{
-    						if(value.toLowerCase().equals("yes"))
-    						{
-    							style.setProperty((byte)val, new Boolean(true));
-    						}
-    						else if(value.toLowerCase().equals("no"))
-    						{
-    							style.setProperty((byte)val, new Boolean(false));
-    						}
-    						//process for boolean
-    						break;
-    					}
-    					case WINDOW_TITLE_FONT:
-    					case MENU_BAR_FONT:
-    					case MENU_ITEM_FONT:
-    					case ITEM_FONT:
-    					case TAB_FONT:
-    					case BUTTON_FONT:
-    					{
-    						//process font
-    						style.setProperty((byte)val, parseFont(value));
-    						break;
-    					}
-    					case THEME_LIGHTING:
-    					case TITLE_BAR_LIGHTING:
-    					case MENU_BAR_LIGHTING:
-    					case MENU_ITEM_LIGHTING:
-    					case TAB_LIGHTING:
-    					case BUTTON_LIGHTING:
-    					{
-    						if(value.toLowerCase().equals("front"))
-    						{
-    							style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_FRONT));
-    						}
-    						else if(value.toLowerCase().equals("behind"))
-    						{
-    							style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_BEHIND));
-    						}
-    						else if(value.toLowerCase().equals("top"))
-    						{
-    							style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_TOP));
-    						}
-    						else if(value.toLowerCase().equals("bottom"))
-    						{
-    							style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_BOTTOM));
-    						}
-    						break;
-    					}
-    					case TAB_TOP_OPACITY:
-    					case TAB_BOTTOM_OPACITY:
-    					case BUTTON_TOP_OPACITY:
-    					case BUTTON_BOTTOM_OPACITY:
-    					case TITLE_BOTTOM_OPACITY:
-    					case TITLE_TOP_OPACITY:
-    					case MENU_BAR_TOP_OPACITY:
-    					case MENU_BAR_BOTTOM_OPACITY:
-    					case MENU_ITEM_TOP_OPACITY:
-    					case MENU_ITEM_BOTTOM_OPACITY:
-    					case THEME_BOTTOM_OPACITY:
-    					case THEME_TOP_OPACITY:
-    					{
-    						StringBuffer bf=new StringBuffer(value);
-    						bf.deleteCharAt(0);
-    						try
-    						{
-    							int intValue=Integer.parseInt(bf.toString(),16);
-    							style.setProperty((byte)val, new Integer(intValue));
-    						}
-    						catch(NumberFormatException nfe)
-    						{
-    							nfe.printStackTrace();
-    						}  
-    						break;
-    					}
-    					default:
-    					{
-    						StringBuffer bf=new StringBuffer(value);
-    						bf.deleteCharAt(0);
-    						try
-    						{
-    							int intValue=Integer.parseInt(bf.toString(),16);
-    							style.setProperty((byte)val, new Integer(intValue));
-    						}
-    						catch(NumberFormatException nfe)
-    						{
-    							nfe.printStackTrace();
-    						}
-    					}
-    					}
-    				}
-    				if(set)
-    				{
-    					break;
-    				}
-    			}
-    			else
-    			{
-    				if(set)break;
-    			}
-    			buffer.delete(0, buffer.length());
-    		}
-    		else
-    		{
-    			buffer.append((char)read);
-    			if(set)
-    			{
-    				break;
-    			}
-    		}
+    	Hashtable props=ResourcesFactory.loadProperites(is);
+    	Enumeration keys=props.keys();
+    	while(keys.hasMoreElements()){
+    		String property=(String)keys.nextElement();
+    		String value=(String)props.get(property);
+    		property=property.toLowerCase();
+    		value=value.toLowerCase();
+    		if(table.containsKey(property))
+			{
+				int val=((Byte)table.get(property)).byteValue();
+				switch(val)
+				{
+				case TITLE_BAR_SHADING:
+				case MENU_BAR_SHADING:
+				case MENU_ITEM_SHADING:
+				case THEME_SHADING:
+				case TAB_SHADING:
+				case BUTTON_SHADING:
+				{
+					if(value.toLowerCase().equals("yes"))
+					{
+						style.setProperty((byte)val, new Boolean(true));
+					}
+					else if(value.toLowerCase().equals("no"))
+					{
+						style.setProperty((byte)val, new Boolean(false));
+					}
+					//process for boolean
+					break;
+				}
+				case WINDOW_TITLE_FONT:
+				case MENU_BAR_FONT:
+				case MENU_ITEM_FONT:
+				case ITEM_FONT:
+				case TAB_FONT:
+				case BUTTON_FONT:
+				{
+					//process font
+					style.setProperty((byte)val, parseFont(value));
+					break;
+				}
+				case THEME_LIGHTING:
+				case TITLE_BAR_LIGHTING:
+				case MENU_BAR_LIGHTING:
+				case MENU_ITEM_LIGHTING:
+				case TAB_LIGHTING:
+				case BUTTON_LIGHTING:
+				{
+					if(value.toLowerCase().equals("front"))
+					{
+						style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_FRONT));
+					}
+					else if(value.toLowerCase().equals("behind"))
+					{
+						style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_BEHIND));
+					}
+					else if(value.toLowerCase().equals("top"))
+					{
+						style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_TOP));
+					}
+					else if(value.toLowerCase().equals("bottom"))
+					{
+						style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_BOTTOM));
+					}
+					break;
+				}
+				case TAB_TOP_OPACITY:
+				case TAB_BOTTOM_OPACITY:
+				case BUTTON_TOP_OPACITY:
+				case BUTTON_BOTTOM_OPACITY:
+				case TITLE_BOTTOM_OPACITY:
+				case TITLE_TOP_OPACITY:
+				case MENU_BAR_TOP_OPACITY:
+				case MENU_BAR_BOTTOM_OPACITY:
+				case MENU_ITEM_TOP_OPACITY:
+				case MENU_ITEM_BOTTOM_OPACITY:
+				case THEME_BOTTOM_OPACITY:
+				case THEME_TOP_OPACITY:
+				{
+					StringBuffer bf=new StringBuffer(value);
+					bf.deleteCharAt(0);
+					try
+					{
+						int intValue=Integer.parseInt(bf.toString(),16);
+						style.setProperty((byte)val, new Integer(intValue));
+					}
+					catch(NumberFormatException nfe)
+					{
+						nfe.printStackTrace();
+					}  
+					break;
+				}
+				default:
+				{
+					StringBuffer bf=new StringBuffer(value);
+					bf.deleteCharAt(0);
+					try
+					{
+						int intValue=Integer.parseInt(bf.toString(),16);
+						style.setProperty((byte)val, new Integer(intValue));
+					}
+					catch(NumberFormatException nfe)
+					{
+						nfe.printStackTrace();
+					}
+				}
+				}
+			}
     	}
     	return style;
     }
