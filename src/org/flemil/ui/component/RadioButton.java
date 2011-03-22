@@ -7,9 +7,11 @@ import javax.microedition.lcdui.Graphics;
 import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
 import org.flemil.event.MenuCommandListener;
+import org.flemil.event.TextItemListener;
 import org.flemil.i18n.LocaleManager;
 import org.flemil.ui.Item;
 import org.flemil.ui.TextItem;
+import org.flemil.ui.Window;
 import org.flemil.util.Rectangle;
 
 
@@ -33,7 +35,15 @@ public class RadioButton implements TextItem
 	private ChoiceGroup group;
 	private boolean selectable=true;
 	private boolean textChanged;
+	private boolean addedItems;
+	private Menu addMenu;
 
+	public TextItemListener getTextListener() {
+		return nameDisplayer.getTextListener();
+	}
+	public void setTextListener(TextItemListener textListener) {
+		nameDisplayer.setTextListener(textListener);
+	}
 	/**
 	 * Sets the text.name of this RadioButton
 	 * @param text the name of this RadioButton
@@ -42,7 +52,6 @@ public class RadioButton implements TextItem
 	{
 		nameDisplayer=new Label(text);
 		nameDisplayer.setFocusible(true);
-		nameDisplayer.setParent(this);
 		displayRect=new Rectangle();
 	}
 	/**
@@ -63,30 +72,43 @@ public class RadioButton implements TextItem
 	{
 		group=grp;
 	}
-	private synchronized void addMenuItems()
+	private void addMenuItems()
 	{
-		if(!selectable)return;
-		markItem=new MenuItem(selected?
-				LocaleManager.getTranslation("flemil.unmark"):
-					LocaleManager.getTranslation("flemil.mark"));
-		markItem.setListener(new MenuCommandListener(){
-
-			public void commandAction(MenuItem item) {
-				keyPressedEvent(
-						GlobalControl.getControl().getMainDisplayCanvas().getKeyCode(Canvas.FIRE));
-				markItem.setName(selected?
-						LocaleManager.getTranslation("flemil.unmark"):
-							LocaleManager.getTranslation("flemil.mark"));
-				repaint(GlobalControl.getControl().getCurrent().getMenuBarRect());
+		synchronized (this) {
+			if(!selectable)return;
+			if(addedItems)return;
+			Item test=parent;
+			while(test!=null && !(test instanceof Window)){
+				test=test.getParent();
 			}
-		});
-		GlobalControl.getControl().getCurrent().getCurrentMenu().add(markItem);
+			if(test!=null){
+				addMenu=((Window)test).getMenu();
+			}
+			markItem=new MenuItem(selected?
+					LocaleManager.getTranslation("flemil.unmark"):
+					LocaleManager.getTranslation("flemil.mark"));
+			markItem.setListener(new MenuCommandListener(){
+
+				public void commandAction(MenuItem item) {
+					keyPressedEvent(
+							GlobalControl.getControl().getMainDisplayCanvas().getKeyCode(Canvas.FIRE));
+					markItem.setName(selected?
+							LocaleManager.getTranslation("flemil.unmark"):
+						LocaleManager.getTranslation("flemil.mark"));
+				}
+			});
+			addMenu.add(markItem);
+			addedItems=true;
+		}
 		repaint(GlobalControl.getControl().getCurrent().getMenuBarRect());
 	}
-	private synchronized void removeMenuItems()
+	private void removeMenuItems()
 	{
-		if(!selectable)return;if(markItem==null)return;
-		GlobalControl.getControl().getCurrent().getCurrentMenu().remove(markItem);
+		synchronized (this) {
+			if(!selectable || !addedItems || addMenu==null)return;if(markItem==null)return;
+			addMenu.remove(markItem);
+			addedItems=false;
+		}
 		repaint(GlobalControl.getControl().getCurrent().getMenuBarRect());
 	}
 	public void focusGained() 
@@ -113,6 +135,7 @@ public class RadioButton implements TextItem
 		int circWid=nameDisplayer.getFont().getHeight()+2;
 		Rectangle tmp=nameDisplayer.getMinimumDisplayRect(availWidth-circWid);
 		tmp.width+=circWid;
+		tmp.height+=2;
 		return tmp;
 	}
 
@@ -189,10 +212,10 @@ public class RadioButton implements TextItem
         	nameDisplayer.paint(g, intersect);
         	//dar the circle
         	g.setColor(focussed?((Integer)GlobalControl.getControl().getStyle().
-    				getProperty(Style.COMPONENT_FOCUS_OUTLINE_COLOR)).intValue():
+    				getProperty(Style.COMPONENT_FOCUS_FOREGROUND)).intValue():
     					((Integer)GlobalControl.getControl().getStyle().
-    				getProperty(Style.COMPONENT_OUTLINE_COLOR)).intValue());
-        	int testHei=nameDisplayer.getFont().getHeight()-4;
+    				getProperty(Style.COMPONENT_FOREGROUND)).intValue());
+        	int testHei=nameDisplayer.getFont().getHeight()-2;
         	if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
         		g.drawArc(displayRect.x+2, displayRect.y+
             			displayRect.height/2-testHei/2, 
@@ -294,6 +317,7 @@ public class RadioButton implements TextItem
 		}
 		if(parent!=null){
 			repaint(displayRect);
+			if(focussed)
 			repaint(GlobalControl.getControl().getCurrent().getMenuBarRect());
 		}
 	}
@@ -307,6 +331,7 @@ public class RadioButton implements TextItem
 
 	public void setParent(Item parent) {
 		this.parent=parent;
+		nameDisplayer.setParent(this);
 	}
 	public byte getAlignment() {
 		return this.nameDisplayer.getAlignment();
@@ -347,12 +372,16 @@ public class RadioButton implements TextItem
 		return nameDisplayer.isFocussed();
 	}
 
-	public synchronized boolean isScrolling() {
-		return nameDisplayer.isScrolling();
+	public boolean isScrolling() {
+		synchronized (this) {
+			return nameDisplayer.isScrolling();
+		}
 	}
 
-	public synchronized void setScrolling(boolean scrolling) {
-		nameDisplayer.setScrolling(scrolling);
+	public void setScrolling(boolean scrolling) {
+		synchronized (this) {
+			nameDisplayer.setScrolling(scrolling);
+		}		
 	}
 
 	public void setTextIndent(int indent) {

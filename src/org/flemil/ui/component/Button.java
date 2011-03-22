@@ -8,6 +8,7 @@ import javax.microedition.lcdui.game.Sprite;
 import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
 import org.flemil.event.ButtonListener;
+import org.flemil.event.TextItemListener;
 import org.flemil.ui.Item;
 import org.flemil.ui.TextItem;
 import org.flemil.util.Rectangle;
@@ -28,6 +29,13 @@ public class Button implements TextItem
 	private boolean focussed;
 	private boolean paintBorder=true;
 	private boolean textChanged;
+	
+	public TextItemListener getTextListener() {
+		return nameDisplayer.getTextListener();
+	}
+	public void setTextListener(TextItemListener textListener) {
+		nameDisplayer.setTextListener(textListener);
+	}
 	public ButtonListener getListener() {
 		return listener;
 	}
@@ -59,7 +67,6 @@ public class Button implements TextItem
         nameDisplayer=new Label(text);
         nameDisplayer.setTextWraps(false);
         nameDisplayer.setFocusible(true);
-        nameDisplayer.setParent(this);
         nameDisplayer.setFont((Font)GlobalControl.getControl().getStyle().getProperty(
                 Style.BUTTON_FONT));
         nameDisplayer.setAlignment(TextItem.ALIGN_CENTER);
@@ -82,15 +89,17 @@ public class Button implements TextItem
 		return displayRect;
 	}
 
-	public synchronized Rectangle getMinimumDisplayRect(int availWidth) 
+	public Rectangle getMinimumDisplayRect(int availWidth) 
 	{
-		nameDisplayer.setFont((Font)GlobalControl.getControl().getStyle().getProperty(
-                Style.BUTTON_FONT));
-		Rectangle min=nameDisplayer.getMinimumDisplayRect(availWidth);
-		min.width+=((Integer)GlobalControl.getControl().getStyle().getProperty(
-                Style.CURVES_RADIUS)).intValue()*2;
-		min.height+=2;
-		return min;
+		synchronized (this) {
+			nameDisplayer.setFont((Font)GlobalControl.getControl().getStyle().getProperty(
+	                Style.BUTTON_FONT));
+			Rectangle min=nameDisplayer.getMinimumDisplayRect(availWidth);
+			min.width+=((Integer)GlobalControl.getControl().getStyle().getProperty(
+	                Style.CURVES_RADIUS)).intValue()*2;
+			min.height+=2;
+			return min;
+		}
 	}
 
 	public Item getParent() 
@@ -191,10 +200,6 @@ public class Button implements TextItem
             	g.setColor(((Integer)GlobalControl.getControl().getStyle().
         				getProperty(Style.BUTTON_FOREGROUND)).intValue());
         	}
-//        	g.setColor(0xffffff);
-//        	g.fillRect(nameDisplayer.getDisplayRect().x, nameDisplayer.getDisplayRect().y, 
-//        			nameDisplayer.getDisplayRect().width, 
-//        			nameDisplayer.getDisplayRect().height);
         	int prev=focussed?((Integer)GlobalControl.getControl().getStyle().
     				getProperty(Style.COMPONENT_FOCUS_FOREGROUND)).intValue():
     					((Integer)GlobalControl.getControl().getStyle().
@@ -298,12 +303,16 @@ public class Button implements TextItem
 		return focussed;
 	}
 
-	public synchronized boolean isScrolling() {
-		return nameDisplayer.isScrolling();
+	public boolean isScrolling() {
+		synchronized (this) {
+			return nameDisplayer.isScrolling();
+		}
 	}
 
-	public synchronized void setScrolling(boolean scrolling) {
-		nameDisplayer.setScrolling(scrolling);
+	public void setScrolling(boolean scrolling) {
+		synchronized (this) {
+			nameDisplayer.setScrolling(scrolling);
+		}
 	}
 
 	public void setTextIndent(int indent) {

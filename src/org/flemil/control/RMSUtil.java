@@ -155,9 +155,12 @@ public class RMSUtil {
 		}
 		return saved;
 	}
-	public synchronized static Style getStyle(String id)
+	
+	public synchronized static Style getStyle(String id){
+		return getStyle(id, Style.getDefault());
+	}
+	public synchronized static Style getStyle(String id, Style style)
 	{
-		Style style=null;
 		try {
 			RecordStore libStore=RecordStore.openRecordStore(RMSUtil.RMS_NAME, true,RecordStore.AUTHMODE_ANY,true);
 			int count=libStore.getNumRecords();
@@ -174,7 +177,7 @@ public class RMSUtil {
 						Style.getDefault().loadFromByteStream(dis);
 						read=dis.readUTF();
 					}
-					style=Style.getDefault().loadFromByteStream(dis);
+					style=style.loadFromByteStream(dis,style);
 				}
 			}
 			libStore.closeRecordStore();

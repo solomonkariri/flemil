@@ -92,7 +92,6 @@ public class ScreenWindow implements Window
                 Style.WINDOW_TITLE_FONT)).stringWidth(title);
         //Set the default panel for this window
         this.contentPane=new Panel();
-        contentPane.setParent(this);
         //initialize the windows menu
         menu=new Menu(LocaleManager.getTranslation("flemil.options"));
         currentMenu=menu;
@@ -122,7 +121,7 @@ public class ScreenWindow implements Window
     }
     public void keyPressedEvent(int keyCode)
     {
-    	if(keyCode==-7 || keyCode==-6)//this is the right soft key
+    	if(keyCode==GlobalControl.getSoftKeys()[1] || keyCode==GlobalControl.getSoftKeys()[0])//this is the right soft key
     	{	
     		if(fullScreen)
     		{
@@ -177,10 +176,10 @@ public class ScreenWindow implements Window
         		Rectangle testLeft=new Rectangle(menubarRect.x, menubarRect.y, 
         				menubarRect.width/2, menubarRect.height);
         		if(testLeft.contains(x, y, 0)){
-        			keyPressedEvent(-6);
+        			keyPressedEvent(GlobalControl.getSoftKeys()[0]);
         		}
         		else{
-        			keyPressedEvent(-7);
+        			keyPressedEvent(GlobalControl.getSoftKeys()[1]);
         		}
         	}
         	else{
@@ -193,7 +192,7 @@ public class ScreenWindow implements Window
         			}
         			else{
         				if(fullScreen && menuArrowRect.contains(x,y,0)){
-            				keyPressedEvent(-7);
+            				keyPressedEvent(GlobalControl.getSoftKeys()[1]);
             			}
             			else{
             				contentPane.pointerReleasedEvent(x, y);
@@ -321,7 +320,6 @@ public class ScreenWindow implements Window
             	}
             }
         }
-        g.setClip(clip.x, clip.y, clip.width, clip.height);
         g.setColor(((Integer)GlobalControl.getControl().getStyle().getProperty(Style.COMPONENT_OUTLINE_COLOR)).
                 intValue());
         g.drawRect(displayRect.x, displayRect.y, 
@@ -344,7 +342,6 @@ public class ScreenWindow implements Window
                     		Sprite.TRANS_NONE, 
                     		i, intersect.y,  Graphics.TOP|Graphics.LEFT);
                 }
-                g.setClip(clip.x, clip.y, clip.width, clip.height);
         	}
         	currentPopUp.paint(g, clip);
         }
@@ -358,6 +355,7 @@ public class ScreenWindow implements Window
         				Graphics.TOP|Graphics.LEFT);
         	}
         }
+        g.setClip(clip.x, clip.y, clip.width, clip.height);
     }
     public Rectangle getMinimumDisplayRect(int availWidth)
     {
@@ -370,49 +368,67 @@ public class ScreenWindow implements Window
         rect.height=minHeight;
         return rect;
     }
-    public synchronized void setDisplayRect(Rectangle rect)
+    public void setDisplayRect(Rectangle rect)
     {
-    	if(rect.width<=2)return;
-    	displayRect=rect;
-    	//set the three rects respectively
-        //title bar rect
-        titlebarRect=new Rectangle();
-        titlebarRect.x=this.displayRect.x;
-        titlebarRect.y=this.displayRect.y;
-        titlebarRect.width=this.displayRect.width;
-        titlebarRect.height=GlobalControl.getControl().getTitleBGround().getHeight();
-        //menu bar rect
-        menubarRect=new Rectangle();
-        menubarRect.x=this.displayRect.x;
-        menubarRect.width=this.displayRect.width;
-        menubarRect.y=displayRect.height+displayRect.y-
-        	GlobalControl.getControl().getMenuBarBGround().getHeight();
-        menubarRect.height=GlobalControl.getControl().getMenuBarBGround().getHeight();
-        //body area rect
-        bodyRect=new Rectangle();
-        bodyRect.x=this.displayRect.x;
-        bodyRect.width=this.displayRect.width;
-        if(fullScreen)
-        {
-        	bodyRect.y=displayRect.y;
-        	bodyRect.height=displayRect.height;
-        }
-        else
-        {
-            bodyRect.y=titlebarRect.y+titlebarRect.height;
-            bodyRect.height=this.displayRect.height-
-            	(titlebarRect.height+menubarRect.height);
-        }
-        setMenuRect(currentMenu);
-        contentPane.setDisplayRect(bodyRect);
-      //set the display rect for any popup showing
-        if(currentPopUp!=null)
-        {
-        	setCurrentPopupRect();
-        }
-        setTitle(getTitle());
-        if(focussed)repaint(displayRect); 
+    	synchronized (this) {
+    		displayRect=rect;
+        	if(rect.width<=2){
+        		contentPane.setParent(null);
+        		for(int i=0;i<popups.size();i++){
+        			((PopUpWindow)popups.elementAt(i)).setParent(null);
+        		}
+        		return;
+        	}
+    		contentPane.setParent(this);
+    		for(int i=0;i<popups.size();i++){
+    			((PopUpWindow)popups.elementAt(i)).setParent(this);
+    		}
+        	//set the three rects respectively
+            //title bar rect
+            titlebarRect=new Rectangle();
+            titlebarRect.x=this.displayRect.x;
+            titlebarRect.y=this.displayRect.y;
+            titlebarRect.width=this.displayRect.width;
+            titlebarRect.height=GlobalControl.getControl().getTitleBGround().getHeight();
+            //menu bar rect
+            menubarRect=new Rectangle();
+            menubarRect.x=this.displayRect.x;
+            menubarRect.width=this.displayRect.width;
+            menubarRect.y=displayRect.height+displayRect.y-
+            	GlobalControl.getControl().getMenuBarBGround().getHeight();
+            menubarRect.height=GlobalControl.getControl().getMenuBarBGround().getHeight();
+            //body area rect
+            bodyRect=new Rectangle();
+            bodyRect.x=this.displayRect.x;
+            bodyRect.width=this.displayRect.width;
+            if(fullScreen)
+            {
+            	bodyRect.y=displayRect.y;
+            	bodyRect.height=displayRect.height;
+            }
+            else
+            {
+                bodyRect.y=titlebarRect.y+titlebarRect.height;
+                bodyRect.height=this.displayRect.height-
+                	(titlebarRect.height+menubarRect.height);
+            }
+            setMenuRect(currentMenu);
+            contentPane.setDisplayRect(bodyRect);
+            
+          //set the display rect for any popup showing
+            if(currentPopUp!=null)
+            {
+            	setCurrentPopupRect();
+            }
+            setTitle(getTitle());
+		}
     }
+    
+    public void layoutCurrentPopup(){
+    	setCurrentPopupRect();
+    	repaint(displayRect);
+    }
+    
     private void setMenuRect(Menu menu){
     	//set the display rect for the menu
         Rectangle menuRect=new Rectangle();
@@ -444,8 +460,11 @@ public class ScreenWindow implements Window
     {
     	focussed=true;
     	setTitle(title);
-        contentPane.focusGained();
-        repaint(displayRect);
+    	if(currentPopUp!=null){
+    		currentPopUp.focusGained();
+    	}
+    	contentPane.focusGained();
+    	repaint(displayRect);
     }
     public void setParent(Item parent)
     {
@@ -459,6 +478,7 @@ public class ScreenWindow implements Window
      */
     public void setFullScreenMode(boolean fullScreen)
     {
+    	if(this.fullScreen==fullScreen)return;
     	this.fullScreen=fullScreen;
         if(fullScreen)
         {
@@ -475,10 +495,13 @@ public class ScreenWindow implements Window
         		{
         			arrowImage=GlobalControl.getImageFactory().scaleImage(Image.createImage("/arrow.png"), 10,
         					10, Sprite.TRANS_ROT270);
-        		}catch(IOException ioe){ioe.printStackTrace();}
+        		}catch(IOException ioe){
+//        			ioe.printStackTrace();
+        			}
         	}
         }
         setDisplayRect(displayRect);
+        repaint(displayRect);
     }
     /**
      * Checks whether this ScreenWindow is currently in fullscreen mode or not
@@ -586,52 +609,60 @@ public class ScreenWindow implements Window
      * In shor the PopupWindows are displayed in a last added currently shown manner
      * @param window the PopupWindow to be displayed
      */
-    public synchronized void showPopUp(PopUpWindow window)
+    public void showPopUp(PopUpWindow window)
     {
-    	if(window!=currentPopUp
-    			&& !popups.contains(window) && focussed)
-    	{
-    		window.setParent(this);
-    		if(currentPopUp!=null)currentPopUp.focusLost();
-    		currentPopUp=window;
-        	currentMenu=currentPopUp.getMenu();
-        	setMenuRect(currentMenu);
-        	popups.addElement(window);
-        	//set the display rect for any popup showing
-            setCurrentPopupRect();
-        	if(focussed){currentPopUp.focusGained(); repaint(displayRect);}
-    	}
+    	synchronized (this) {
+    		if(window!=currentPopUp
+        			&& !popups.contains(window) && focussed)
+        	{
+        		if(displayRect.width>2)
+        		if(currentPopUp!=null){
+        			currentPopUp.setParent(null);
+        			currentPopUp.focusLost();
+        		}
+        		window.setParent(this);
+        		currentPopUp=window;
+            	currentMenu=currentPopUp.getMenu();
+            	setMenuRect(currentMenu);
+            	popups.addElement(window);
+            	//set the display rect for any popup showing
+                setCurrentPopupRect();
+        	}
+		}
+    	repaint(displayRect);
     }
     /**
      * Removes and hides the specified popup window from the list of popup
      *  windows for this ScreenWindow
      * @param popupWindow the Popup window to be hidden
      */
-    public synchronized void hidePopup(PopUpWindow popupWindow)
+    public void hidePopup(PopUpWindow popupWindow)
     {
-    	if(popupWindow==null)return;
-    	popups.removeElement(popupWindow);
-    	if(currentPopUp!=null && popupWindow==currentPopUp)
-    	{
-    		currentPopUp.focusLost();
-    		currentPopUp.setParent(null);
-        	if(!popups.isEmpty())
+    	synchronized (this) {
+    		if(popupWindow==null)return;
+        	popups.removeElement(popupWindow);
+        	if(currentPopUp!=null && popupWindow==currentPopUp)
         	{
-        		currentPopUp=(PopUpWindow)popups.elementAt(popups.size()-1);
-            	currentMenu=currentPopUp.getMenu();
-            	setMenuRect(currentMenu);
-            	setCurrentPopupRect();
-            	if(focussed)currentPopUp.focusGained();
-        	}
-        	else
-        	{
-        		currentPopUp=null;
-        		currentMenu=menu;
-        		setMenuRect(currentMenu);
-        		contentPane.focusGained();
+        		currentPopUp.focusLost();
+        		currentPopUp.setParent(null);
+            	if(!popups.isEmpty())
+            	{
+            		currentPopUp=(PopUpWindow)popups.elementAt(popups.size()-1);
+                	currentMenu=currentPopUp.getMenu();
+                	setMenuRect(currentMenu);
+                	setCurrentPopupRect();
+                	if(focussed)currentPopUp.focusGained();
+            	}
+            	else
+            	{
+            		currentPopUp=null;
+            		currentMenu=menu;
+            		setMenuRect(currentMenu);
+            		contentPane.focusGained();
+            	}
         	}
         	repaint(displayRect);
-    	}
+		}
     }
 	private void setCurrentPopupRect() {
 		if(currentPopUp!=null){
@@ -646,6 +677,7 @@ public class ScreenWindow implements Window
 	    	popRect.x=bodyRect.x+(bodyRect.width-popRect.width)/2;
 	    	popRect.y=bodyRect.y+(bodyRect.height-popRect.height)/2;
 	    	currentPopUp.setDisplayRect(popRect);
+	    	if(focussed)currentPopUp.focusGained();
 		}
 	}
 	public void menuRightSelected() {

@@ -11,6 +11,7 @@ import org.flemil.event.ListSelectionListener;
 import org.flemil.ui.Container;
 import org.flemil.ui.Item;
 import org.flemil.ui.Scrollable;
+import org.flemil.ui.Window;
 import org.flemil.util.Rectangle;
 
 
@@ -36,6 +37,7 @@ public class List implements Container {
 	private int rightMargin=0;
 	private boolean paintBorder=true;
 	private boolean wraps=false;
+	private Panel parentWindowPane;
 	public int getTopMargin() {
 		return topMargin;
 	}
@@ -77,16 +79,35 @@ public class List implements Container {
 	 * Adds an Item to the end of the list
 	 * @param item the Item to be added to the List
 	 */
-	public synchronized void add(Item item)
+	public void add(Item item)
 	{
-    	elements.addElement(item);
-    	currentItem=(Item)elements.elementAt(0);
-    	item.setParent(this);
-    	layoutItems();
-    	if(focussed && currentItem!=null && currentItem.getDisplayRect()!=null){
-    		visualizeRect(currentItem.getDisplayRect());
-    		currentItem.focusGained();
-    	}
+		synchronized (this) {
+			elements.addElement(item);
+	    	if(currentItem==null){
+	    		currentItem=(Item)elements.elementAt(0);
+	    	}
+	    	if(parent!=null)
+	    	item.setParent(this);
+	    	if(parentWindowPane!=null){
+	    		if(parentWindowPane.getParent() instanceof ScreenWindow){
+	    			((ScreenWindow)parentWindowPane.getParent()).setDisplayRect(
+	    					parentWindowPane.getParent().getDisplayRect());
+	    		}
+	    		else if(parentWindowPane.getParent() instanceof TabsControl){
+	    			((TabsControl)parentWindowPane.getParent()).refreshItemsRect(parentWindowPane);
+	    		}
+	    		else if(parentWindowPane.getParent() instanceof PopUpWindow){
+	    			ScreenWindow current=(ScreenWindow)parentWindowPane.getParent().getParent();
+	    			if(current!=null){
+	    				current.layoutCurrentPopup();
+	    			}
+	    		}
+	    	}
+	    	if(focussed && currentItem!=null && currentItem.getDisplayRect()!=null){
+	    		visualizeRect(currentItem.getDisplayRect());
+	    		currentItem.focusGained();
+	    	}
+		}
 	}
 	/**
 	 * Returns the index of the currently selected Item in the List. The 
@@ -101,40 +122,82 @@ public class List implements Container {
 	 * Removes the item passed to this method from this List
 	 * @param item the Item to be removed from this List
 	 */
-	public synchronized void remove(Item item)
+	public void remove(Item item)
 	{
-    	elements.removeElement(item);
-    	item.setParent(null);
-    	if(!elements.isEmpty())
-    	{
-    		if(currentItem!=null)currentItem.focusLost();
-    		currentItem=(Item)elements.elementAt(0);
-    		if(focussed)currentItem.focusGained();
-    	}
-    	else
-    	{
-    		currentItem=null;
-    	}
-    	GlobalControl.getControl().refreshLayout();
+		synchronized (this) {
+			if(item.equals(currentItem)){
+				currentItem.focusLost();
+				int index=elements.indexOf(item);
+				if(index>0)
+				{
+					currentItem=((Item)elements.elementAt(index-1));
+				}
+				else{
+					if(!elements.isEmpty()){
+						currentItem=((Item)elements.elementAt(0));
+					}
+					else{
+						currentItem=null;
+					}
+				}
+				if(currentItem!=null && focussed)currentItem.focusGained();
+			}
+	    	elements.removeElement(item);
+	    	item.setParent(null);
+	    	if(parentWindowPane!=null){
+	    		if(parentWindowPane.getParent() instanceof ScreenWindow){
+	    			((ScreenWindow)parentWindowPane.getParent()).setDisplayRect(
+	    					parentWindowPane.getParent().getDisplayRect());
+	    		}
+	    		else if(parentWindowPane.getParent() instanceof TabsControl){
+	    			((TabsControl)parentWindowPane.getParent()).refreshItemsRect(parentWindowPane);
+	    		}
+	    		else if(parentWindowPane.getParent() instanceof PopUpWindow){
+	    			ScreenWindow current=(ScreenWindow)parentWindowPane.getParent().getParent();
+	    			if(current!=null){
+	    				current.layoutCurrentPopup();
+	    			}
+	    		}
+	    	}
+		}
+    	repaint(displayRect);
 	}
-	public synchronized void removeAll()
+	public void removeAll()
 	{
-		if(currentItem!=null)currentItem.focusLost();
-		currentItem=null;
-    	for(int i=0;i<elements.size();i++)
-    	{
-    		((Item)elements.elementAt(i)).setParent(null);
-    	}
-    	elements.removeAllElements();
-    	layoutItems();
+		synchronized (this) {
+			if(currentItem!=null)currentItem.focusLost();
+			currentItem=null;
+	    	for(int i=0;i<elements.size();i++)
+	    	{
+	    		((Item)elements.elementAt(i)).setParent(null);
+	    	}
+	    	elements.removeAllElements();
+	    	if(parentWindowPane!=null){
+	    		if(parentWindowPane.getParent() instanceof ScreenWindow){
+	    			((ScreenWindow)parentWindowPane.getParent()).setDisplayRect(
+	    					parentWindowPane.getParent().getDisplayRect());
+	    		}
+	    		else if(parentWindowPane.getParent() instanceof TabsControl){
+	    			((TabsControl)parentWindowPane.getParent()).refreshItemsRect(parentWindowPane);
+	    		}
+	    		else if(parentWindowPane.getParent() instanceof PopUpWindow){
+	    			ScreenWindow current=(ScreenWindow)parentWindowPane.getParent().getParent();
+	    			if(current!=null){
+	    				current.layoutCurrentPopup();
+	    			}
+	    		}
+	    	}
+		}
 	}
 	/**
 	 * Removes the Item at the index passed to this method from this List
 	 * @param index the index of the Item to be removed from this List
 	 */
-	public synchronized void remove(int index)
+	public void remove(int index)
 	{
-		remove((Item)elements.elementAt(index));
+		synchronized (this) {
+			remove((Item)elements.elementAt(index));
+		}
 	}
 	/**
 	 * Sets the entry passed to this method as the currently selected Item in this List.
@@ -171,17 +234,19 @@ public class List implements Container {
 	}
 	
 	
-	private synchronized void layoutItems()
+	private void layoutItems()
     {
-		int size=elements.size();
-    	int yStart=displayRect.y+2;
-    	for(int i=0;i<size;i++){
-    		Rectangle itemRect=new Rectangle(displayRect.x+leftMargin+1, yStart+i*(maxHeight+1), displayRect.width-leftMargin-rightMargin-2, maxHeight);
-    		((Item)elements.elementAt(i)).setDisplayRect(itemRect);
-    	}
-    	if(focussed && currentItem!=null){
-    		visualizeRect(currentItem.getDisplayRect());
-    	}
+		synchronized (this) {
+			if(parentWindowPane==null)return;
+	    	int yStart=displayRect.y+2;
+	    	for(int i=0;i<elements.size();i++){
+	    		Rectangle itemRect=new Rectangle(displayRect.x+leftMargin+1, yStart+i*(maxHeight+1), displayRect.width-leftMargin-rightMargin-2, maxHeight);
+	    		((Item)elements.elementAt(i)).setDisplayRect(itemRect);
+	    	}
+	    	if(focussed && currentItem!=null){
+	    		visualizeRect(currentItem.getDisplayRect());
+	    	}
+		}
     }
 	/**
 	 * Returns the Item that is currently selected in this List
@@ -204,6 +269,7 @@ public class List implements Container {
 	}
 
 	public void focusLost() {
+		if(!focussed)return;
 		focussed=false;
 		if(currentItem!=null)currentItem.focusLost();
 	}
@@ -372,8 +438,7 @@ public class List implements Container {
         if((intersect=this.displayRect.calculateIntersection(clip))!=null)
         {
         	g.setClip(intersect.x, intersect.y, intersect.width, intersect.height);
-        	int size=elements.size();
-        	for(int i=0;i<size;i++)
+        	for(int i=0;i<elements.size();i++)
         	{
         		((Item)elements.elementAt(i)).paint(g, clip);
         	}
@@ -438,9 +503,15 @@ public class List implements Container {
 		}
 	}
 
-	public synchronized void setDisplayRect(Rectangle rect) {
-		this.displayRect=rect;
-        layoutItems();
+	public void setDisplayRect(Rectangle rect) {
+		synchronized (this) {
+			if(parentWindowPane==null)return;
+			this.displayRect=rect;
+	        layoutItems();
+		}
+		if(focussed && currentItem!=null){
+			currentItem.focusGained();
+		}
 	}
 
 	public void setFocusible(boolean focusible) {
@@ -453,6 +524,26 @@ public class List implements Container {
 
 	public void setParent(Item parent) {
 		this.parent=parent;
+		Item lastPanel=null;
+        if(parent!=null){
+    		Item test=parent;
+    		while(test!=null && !(test instanceof Window) && 
+    				!(test instanceof TabsControl)){
+    			if(test instanceof Panel)lastPanel=test;
+    			test=test.getParent();
+    		}
+    		if(test!=null){
+    			parentWindowPane=(Panel)lastPanel;
+    		}
+    		try{
+    			for(int i=0;i<elements.size();i++){
+    				((Item)elements.elementAt(i)).setParent(this);
+    			}
+    		}
+    		catch(Exception exc){
+//    			exc.printStackTrace();
+    			}
+    	}
 	}
 
 	public void setListener(ListSelectionListener listener) {
@@ -486,7 +577,8 @@ public class List implements Container {
 		}
 	}
 	public void itemHeightChanged(Item item, int change) {
-		GlobalControl.getControl().refreshLayout();
+		if(parent!=null)
+			GlobalControl.getControl().refreshLayout();
 	}
 	public void setWraps(boolean wraps) {
 		this.wraps = wraps;

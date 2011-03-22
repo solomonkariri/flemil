@@ -156,6 +156,7 @@ public class Grid implements Container
 	}
 	private void layoutItems()
 	{
+		if(parentWindowPane==null)return;
 		if(displayRect.width<=1)return;
 		rowHei=(displayRect.height-items.length-2)/items.length;
 		int val=displayRect.width-items[0].length-2;
@@ -315,70 +316,88 @@ public class Grid implements Container
 	 * and so on.
 	 * @param item the Item to be added to this Grid
 	 */
-	public synchronized void add(Item item)
+	public void add(Item item)
 	{
-		outer: for(int i=0;i<items.length;i++)
-		{
-			if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
-				for(int j=0;j<items[i].length;j++)
-				{
-					if(items[i][j]==null)
+		synchronized (this) {
+			outer: for(int i=0;i<items.length;i++)
+			{
+				if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
+					for(int j=0;j<items[i].length;j++)
 					{
-						items[i][j]=item;
-						itemsCount++;
-						items[i][j].setParent(this);
-						if(currentItem==null)
+						if(items[i][j]==null)
 						{
-							switch (selectionMode) {
-							case Grid.CELL_SELECTION:
-								if(item.isFocusible())
-								{
+							items[i][j]=item;
+							itemsCount++;
+							if(parent!=null)
+							items[i][j].setParent(this);
+							if(currentItem==null)
+							{
+								switch (selectionMode) {
+								case Grid.CELL_SELECTION:
+									if(item.isFocusible())
+									{
+										currentItem=item;
+										currentRow=i;currentCol=j;
+									}
+									break;
+								case Grid.ROW_SELECTION:
+								case Grid.COL_SELECTION:
 									currentItem=item;
 									currentRow=i;currentCol=j;
+									break;
 								}
-								break;
-							case Grid.ROW_SELECTION:
-							case Grid.COL_SELECTION:
-								currentItem=item;
-								currentRow=i;currentCol=j;
-								break;
 							}
+							break outer;
 						}
-						break outer;
+					}
+				}
+				else{
+					for(int j=cols-1;j>=0;j--)
+					{
+						if(items[i][j]==null)
+						{
+							items[i][j]=item;
+							itemsCount++;
+							if(parent!=null)
+							items[i][j].setParent(this);
+							if(currentItem==null)
+							{
+								switch (selectionMode) {
+								case Grid.CELL_SELECTION:
+									if(item.isFocusible())
+									{
+										currentItem=item;
+										currentRow=i;currentCol=j;
+									}
+									break;
+								case Grid.ROW_SELECTION:
+								case Grid.COL_SELECTION:
+									currentItem=item;
+									currentRow=i;currentCol=j;
+									break;
+								}
+							}
+							break outer;
+						}
 					}
 				}
 			}
-			else{
-				for(int j=cols-1;j>=0;j--)
-				{
-					if(items[i][j]==null)
-					{
-						items[i][j]=item;
-						itemsCount++;
-						items[i][j].setParent(this);
-						if(currentItem==null)
-						{
-							switch (selectionMode) {
-							case Grid.CELL_SELECTION:
-								if(item.isFocusible())
-								{
-									currentItem=item;
-									currentRow=i;currentCol=j;
-								}
-								break;
-							case Grid.ROW_SELECTION:
-							case Grid.COL_SELECTION:
-								currentItem=item;
-								currentRow=i;currentCol=j;
-								break;
-							}
-						}
-						break outer;
+			if(parentWindowPane!=null){
+				if(parentWindowPane.getParent() instanceof ScreenWindow){
+					((ScreenWindow)parentWindowPane.getParent()).setDisplayRect(
+							parentWindowPane.getParent().getDisplayRect());
+				}
+				else if(parentWindowPane.getParent() instanceof TabsControl){
+					((TabsControl)parentWindowPane.getParent()).refreshItemsRect(parentWindowPane);
+				}
+				else if(parentWindowPane.getParent() instanceof PopUpWindow){
+					ScreenWindow current=(ScreenWindow)parentWindowPane.getParent().getParent();
+					if(current!=null){
+						current.layoutCurrentPopup();
 					}
 				}
 			}
 		}
-		layoutItems();
 	}
 	/**
 	 * Removes the item at the specified row and column from this Grid. 
@@ -388,35 +407,50 @@ public class Grid implements Container
 	 * @param row  the row from which to delete a cmponent
 	 * @param col the column from which to delete an item
 	 */
-	public synchronized void remove(int row,int col)
+	public void remove(int row,int col)
 	{
-		if(LocaleManager.getTextDirection()==LocaleManager.getTextDirection()){
-			if(currentItem==items[row][col])
-			{
-				currentItem=null;
-				if(col<items[0].length-1)
+		synchronized (this) {
+			if(LocaleManager.getTextDirection()==LocaleManager.getTextDirection()){
+				if(currentItem==items[row][col])
 				{
-					currentItem=items[row][col+1];
+					currentItem=null;
+					if(col<items[0].length-1)
+					{
+						currentItem=items[row][col+1];
+					}
+					else if(col==items[0].length-1 && items[0].length>1)
+					{
+						currentItem=items[row][col-1];
+					}
 				}
-				else if(col==items[0].length-1 && items[0].length>1)
+				items[row][col]=null;
+			}
+			else{
+				if(currentItem==items[row][cols-col-1])
 				{
-					currentItem=items[row][col-1];
+					currentItem=null;
+					if(cols-col-1<items[0].length-1)
+					{
+						currentItem=items[row][col+col];
+					}
+				}
+				items[row][cols-col-1]=null;
+			}
+			if(parentWindowPane!=null){
+				if(parentWindowPane.getParent() instanceof ScreenWindow){
+					((ScreenWindow)parentWindowPane.getParent()).setDisplayRect(
+							parentWindowPane.getParent().getDisplayRect());
+				}
+				else if(parentWindowPane.getParent() instanceof TabsControl){
+					((TabsControl)parentWindowPane.getParent()).refreshItemsRect(parentWindowPane);
+				}
+				else if(parentWindowPane.getParent() instanceof PopUpWindow){
+					ScreenWindow current=(ScreenWindow)parentWindowPane.getParent().getParent();
+					if(current!=null){
+						current.layoutCurrentPopup();
+					}
 				}
 			}
-			items[row][col]=null;
-			GlobalControl.getControl().refreshLayout();
-		}
-		else{
-			if(currentItem==items[row][cols-col-1])
-			{
-				currentItem=null;
-				if(cols-col-1<items[0].length-1)
-				{
-					currentItem=items[row][col+col];
-				}
-			}
-			items[row][cols-col-1]=null;
-			GlobalControl.getControl().refreshLayout();
 		}
 	}
 	public void keyPressedEvent(int keyCode) {
@@ -623,7 +657,11 @@ public class Grid implements Container
 						track++;
 	        		}
 					if(track<items[0].length-1)track++;
-	        		if(items[currentRow][track]!=null && items[currentRow][track].isFocusible())
+					if(track==currentCol){
+						if(parent!=null)parent.keyPressedEventReturned(keyCode);
+						return;
+					}
+					else if(items[currentRow][track]!=null && items[currentRow][track].isFocusible())
 	        		{
 	        			currentCol=track;
 						if(currentItem!=null)currentItem.focusLost();
@@ -677,6 +715,11 @@ public class Grid implements Container
 	        			track--;
 	        		}
 					if(track>0)track--;
+					if(track==currentCol){
+						if(parent!=null)parent.keyPressedEventReturned(keyCode);
+						return;
+					}
+					else
 					if(items[currentRow][track]!=null && items[currentRow][track].isFocusible())
 					{
 						currentCol=track;
@@ -730,15 +773,6 @@ public class Grid implements Container
 	//fewer code
 	private void updateFocus()
 	{
-		if(parentWindowPane==null){
-    		Item test=parent;
-    		while(test!=null && !(test instanceof Window)){
-    			test=test.getParent();
-    		}
-    		if(test!=null){
-    			parentWindowPane=((Window)test).getContentPane();
-    		}
-    	}
     	if(parentWindowPane==null)return;
 		switch (selectionMode) {
 		case Grid.CELL_SELECTION:
@@ -906,9 +940,12 @@ public class Grid implements Container
 		}
 	}
 
-	public synchronized void setDisplayRect(Rectangle rect) {
-		this.displayRect=rect;
-		layoutItems();
+	public void setDisplayRect(Rectangle rect) {
+		synchronized (this) {
+			if(parentWindowPane==null)return;
+			this.displayRect=rect;
+			layoutItems();
+		}
 	}
 
 	public void setFocusible(boolean focusible) {
@@ -920,6 +957,35 @@ public class Grid implements Container
 	}
 	public void setParent(Item parent) {
 		this.parent=parent;
+		parentWindowPane=null;
+		Item lastPanel=null;
+        if(parent!=null){
+    		Item test=parent;
+    		while(test!=null && !(test instanceof Window) && 
+    				!(test instanceof TabsControl)){
+    			if(test instanceof Panel)lastPanel=test;
+    			test=test.getParent();
+    		}
+    		if(test!=null){
+    			parentWindowPane=(Panel)lastPanel;
+    		}
+    		for(int i=0;i<rows;i++){
+    			for(int j=0;j<cols;j++){
+    				if(items[i][j]!=null){
+    					items[i][j].setParent(this);
+    				}
+    			}
+    		}
+    	}
+        else{
+        	for(int i=0;i<rows;i++){
+        		for(int j=0;j<cols;j++){
+        			if(items[i][j]!=null){
+        				items[i][j].setParent(null);
+        			}
+        		}
+        	}
+        }
 	}
 	/**
 	 * Sets whether this grid should paint the lines that mark its grid
@@ -956,24 +1022,13 @@ public class Grid implements Container
 		return cols;
 	}
 	public void itemHeightChanged(Item item, int change) {
-		int test=(displayRect.height-items.length)/items.length-(displayRect.height%items.length)-1;
-		Rectangle testRect=item.getDisplayRect();
-		boolean relayout = false;
-		if(testRect.height<test){
-			int previousHeight=testRect.height-change;
-			if(previousHeight>=test)relayout=true;
+		int currentHeight=displayRect.height;
+		Rectangle minRect=getMinimumDisplayRect(displayRect.width);
+		if(minRect.height!=currentHeight){
+			setDisplayRect(new Rectangle(displayRect.x, displayRect.y, displayRect.width, minRect.height));
+			int diff=minRect.height+1-currentHeight;
+			((Container)parent).itemHeightChanged(this, diff);
 		}
-		else if(testRect.height>test){
-			relayout=true;
-		}
-		if(relayout){
-			int currentHeight=displayRect.height;
-			Rectangle minRect=getMinimumDisplayRect(displayRect.width);
-			if(minRect.height!=currentHeight){
-				setDisplayRect(new Rectangle(displayRect.x, displayRect.y, displayRect.width, minRect.height));
-				int diff=minRect.height+1-currentHeight;
-				((Container)parent).itemHeightChanged(this, diff);
-			}
-		}
+		repaint(displayRect);
 	}
 }

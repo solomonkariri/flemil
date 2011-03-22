@@ -56,18 +56,9 @@ public class ImageFactory
 	public Image scaleImage(Image srcImg,int newWidth,
 		int newHeight,int transform)
 	{
-        //Apply the transform to the original image first
-        Image mirroredImg=Image.createImage(srcImg,0,0,srcImg.getWidth(),
-				srcImg.getHeight(),transform);
-		if(mirroredImg.getWidth()==newWidth &&
-			mirroredImg.getHeight()==newHeight)
-		{
-			return mirroredImg;
-		}
-		Image newImage=mirroredImg;
 		//capture src image dimensions
-		int width=mirroredImg.getWidth();
-		int height=mirroredImg.getHeight();
+		int width=srcImg.getWidth();
+		int height=srcImg.getHeight();
 		int rgbData[]=new int[newWidth*newHeight];
 		int track=0;
 		for(int i=0;i<newHeight;i++)
@@ -75,22 +66,27 @@ public class ImageFactory
 			for(int j=0;j<newWidth;j++)
 			{
 				int []tempstr=new int[1];
-				mirroredImg.getRGB(tempstr, 0, 1, (j*width)/newWidth,
+				srcImg.getRGB(tempstr, 0, 1, (j*width)/newWidth,
 						(i*height)/newHeight, 1, 1);
 				rgbData[track++]=tempstr[0];
 			}
 		}
 		try
 		{
-			newImage=Image.createRGBImage(rgbData, newWidth, newHeight, true);
+			Image newImage=Image.createRGBImage(rgbData, newWidth, newHeight, true);
+			//Apply the transform to the original image first
+	        Image mirroredImg=Image.createImage(newImage,0,0,newImage.getWidth(),
+					newImage.getHeight(),transform);
+	        return mirroredImg;
 		}
 		catch(Exception e)
 		{
-			e.printStackTrace();
+//			e.printStackTrace();
 		}
-		return newImage;
+		return srcImg;
 	}
-    /**
+	
+	/**
      * Creates an Image 1pixel wide and with the specified height with the
      * provided properties. The image is created with a base color specified.
      * The Image is creeated with an opacity that varies over the whole height
@@ -114,6 +110,37 @@ public class ImageFactory
      * @return the created Image
      */
     public Image createTextureImage(int width,int height,int color,
+            int startOpacity, int endOpacity, int style,boolean shading,int curvature)
+    {
+    	byte[] data=createTextureImageBytes(width,height,color,
+                startOpacity, endOpacity, style, shading,curvature);
+    	return Image.createImage(data, 0, data.length);
+    }
+	
+    /**
+     * Creates an Image 1pixel wide and with the specified height with the
+     * provided properties. The image is created with a base color specified.
+     * The Image is creeated with an opacity that varies over the whole height
+     * of the image. The opacity starts at the top and ends at the bottom but
+     * can be reversed by setting the reverseOpacity parameter to true.
+     * @param width the width of the generated image
+     * @param height the height of the Image
+     * @param color the base color of the Image
+     * @param startOpacity the opacity of the starting point. Should be in the 
+     * range 0 to 255 inclusive. 0 for total transparency and 255 for total opacity
+     * @param endOpacity the opacity of the end point. Should be in the 
+     * range 0 to 255 inclusive. 0 for total transparency and 255 for total opacity
+     * @param style the style for the opacity. This is the parameter that is used to 
+     * denote the lighting to be used and should be one of the values 
+     * ImageFactory.LIGHT_TOP,ImageFactory.LIGHT_BOTTOM, ImageFactory.FRONT, ImageFactory.LIGHT_BEHIND 
+     * @param shading states whether shading should take place for this gradient.
+     * opacity at the bottom instead of top.
+     * @param curvature the amount of curvature to apply when generating a gradient with round edges.
+     * To generate a texture with no round edges, pass a value of 0 for this parameter. The curvature
+     * is applied only for the left side of the image and its upon you to do a mirror transformation
+     * @return the bytes that can be used to create the texture image
+     */
+    public byte[] createTextureImageBytes(int width,int height,int color,
             int startOpacity, int endOpacity, int style,boolean shading,int curvature)
     {
         //Initialize the CRC table only if this method is invoked
@@ -435,7 +462,7 @@ public class ImageFactory
         //free the crc table from memory
         crcTable=null;
         Runtime.getRuntime().gc();
-        return Image.createImage(data, 0, size);
+        return data;
     }
     public synchronized int getCRC(byte []data,int start,int length)
     {

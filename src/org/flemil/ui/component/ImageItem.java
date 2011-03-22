@@ -69,7 +69,11 @@ public class ImageItem implements Item
 	public Rectangle getDisplayRect() {
 		return this.displayRect;
 	}
-
+	
+	public Image getImage(){
+		return image;
+	}
+	
 	public Rectangle getMinimumDisplayRect(int availWidth) {
 		if(this.image!=null)
 		{
@@ -141,6 +145,13 @@ public class ImageItem implements Item
         				displayRect.width-2, displayRect.height-2,
         				radius, radius);
         	}
+        	if(focussed){
+        		g.setColor(((Integer)GlobalControl.getControl().getStyle().
+        				getProperty(Style.COMPONENT_FOCUS_BACKGROUND)).intValue());
+        		g.fillRoundRect(this.displayRect.x+2, displayRect.y+2, 
+        				displayRect.width-4, displayRect.height-4,
+        				radius, radius);
+        	}
         	if(drawnImage!=null)
         	{
         		g.setClip(intersect.x, intersect.y,intersect.width,intersect.height);
@@ -195,34 +206,36 @@ public class ImageItem implements Item
 		}
 	}
 
-	public synchronized void setDisplayRect(Rectangle rect){
-		if(rect.width<=2)return;
-		if(Math.abs(rect.width-displayRect.width)<=2 
-				&& Math.abs(rect.height-displayRect.height)<=2)
-		{
-			this.displayRect.x=rect.x;
-			this.displayRect.y=rect.y;
-			return;
-		}
-		if((rect.height!=displayRect.height || rect.width!=displayRect.width)
-				&& resizeToFit && image!=null)
-		{
-			if(drawnImage!=null &&
-					drawnImage.getHeight()==rect.height && drawnImage.getWidth()==rect.width){
-				this.displayRect=rect;
+	public void setDisplayRect(Rectangle rect){
+		synchronized (this) {
+			if(rect.width<=2)return;
+			if(Math.abs(rect.width-displayRect.width)<=2 
+					&& Math.abs(rect.height-displayRect.height)<=2)
+			{
+				this.displayRect.x=rect.x;
+				this.displayRect.y=rect.y;
 				return;
 			}
-			drawnImage=GlobalControl.getImageFactory().scaleImage(image, 
-					rect.width, rect.height, Sprite.TRANS_NONE);
+			if((rect.height!=displayRect.height || rect.width!=displayRect.width)
+					&& resizeToFit && image!=null)
+			{
+				if(drawnImage!=null &&
+						drawnImage.getHeight()==rect.height && drawnImage.getWidth()==rect.width){
+					this.displayRect=rect;
+					return;
+				}
+				drawnImage=GlobalControl.getImageFactory().scaleImage(image, 
+						rect.width, rect.height, Sprite.TRANS_NONE);
+			}
+			else if(drawnImage==null)
+			{
+				if(resizeToFit)
+					drawnImage=Image.createImage(image);
+				else
+					drawnImage=image;
+			}
+			this.displayRect=rect;
 		}
-		else if(drawnImage==null)
-		{
-			if(resizeToFit)
-				drawnImage=Image.createImage(image);
-			else
-				drawnImage=image;
-		}
-		this.displayRect=rect;
 	}
 
 	public void setParent(Item parent) 
@@ -259,6 +272,9 @@ public class ImageItem implements Item
 	 */
 	public void setResizeToFit(boolean resizeToFit) {
 		this.resizeToFit = resizeToFit;
+		if(!resizeToFit){
+			drawnImage=image;
+		}
 		setDisplayRect(displayRect);
 	}
 	/**
@@ -272,11 +288,12 @@ public class ImageItem implements Item
 		return focussed;
 	}
 	public void setImage(Image image) {
+		if(!resizeToFit)drawnImage=null;
 		this.image=image;
 		if(displayRect.width<=1)return;
 		this.drawnImage=null;
 		int currentHeight=displayRect.height;
-		if(resizeToFit){
+		if(resizeToFit && displayRect.width>1){
 			int height=(image.getHeight()*displayRect.width)/image.getWidth();
 			drawnImage=GlobalControl.getImageFactory().scaleImage(image, 
 					displayRect.width, height, Sprite.TRANS_NONE);
@@ -285,12 +302,15 @@ public class ImageItem implements Item
 		{
 			drawnImage=image;
 		}
-		int newHeight=drawnImage.getHeight();
+		int newHeight=drawnImage.getHeight()+4;
 		if(newHeight!=currentHeight){
 			int diff=Math.abs(newHeight-currentHeight);
 			diff=newHeight-currentHeight;
 			displayRect.height=newHeight;
 			((Container)parent).itemHeightChanged(this, diff);
+		}
+		if(parent!=null){
+			repaint(displayRect);
 		}
 	}
 	public void moveRect(int dx, int dy) {

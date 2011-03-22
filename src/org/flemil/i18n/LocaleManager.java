@@ -23,7 +23,7 @@ public class LocaleManager {
 		try {
 			loadTranslationsFromStream(defaultLangStream);
 		} catch (IOException e) {
-			e.printStackTrace();
+//			e.printStackTrace();
 		}
 	}
 	public static void loadTranslationsFromStream(InputStream is) throws IOException{

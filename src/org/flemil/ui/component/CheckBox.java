@@ -7,9 +7,11 @@ import javax.microedition.lcdui.Graphics;
 import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
 import org.flemil.event.MenuCommandListener;
+import org.flemil.event.TextItemListener;
 import org.flemil.i18n.LocaleManager;
 import org.flemil.ui.Item;
 import org.flemil.ui.TextItem;
+import org.flemil.ui.Window;
 import org.flemil.util.Rectangle;
 
 
@@ -31,7 +33,15 @@ public class CheckBox implements TextItem {
 	private MenuItem markItem;
 	private boolean selectable=true;
 	private boolean textChanged;
+	private Menu addMenu;
+	private boolean addedItems;
 	
+	public TextItemListener getTextListener() {
+		return nameDisplayer.getTextListener();
+	}
+	public void setTextListener(TextItemListener textListener) {
+		nameDisplayer.setTextListener(textListener);
+	}
 	/**
 	 * 
 	 * @param text
@@ -40,7 +50,6 @@ public class CheckBox implements TextItem {
 	{
 		nameDisplayer=new Label(text);
 		nameDisplayer.setFocusible(true);
-		nameDisplayer.setParent(this);
 		displayRect=new Rectangle();
 	}
 	/**
@@ -57,34 +66,47 @@ public class CheckBox implements TextItem {
 	public void setSelectable(boolean selectable) {
 		this.selectable = selectable;
 	}
-	private synchronized void addMenuItems()
+	private void addMenuItems()
 	{
-		if(!selectable)return;
-		markItem=new MenuItem(selected?
-				LocaleManager.getTranslation("flemil.unmark"):
-				LocaleManager.getTranslation("flemil.mark"));
-		markItem.setListener(new MenuCommandListener(){
-
-			public void commandAction(MenuItem item) {
-				keyPressedEvent(
-						GlobalControl.getControl().getMainDisplayCanvas().getKeyCode(Canvas.FIRE));
-				markItem.setName(selected?
-						LocaleManager.getTranslation("flemil.unmark"):
-					LocaleManager.getTranslation("flemil.mark"));
-				repaint(GlobalControl.getControl().getCurrent().getMenuBarRect());
+		synchronized (this) {
+			if(!selectable)return;
+			if(addedItems)return;
+			Item test=parent;
+			while(test!=null && !(test instanceof Window)){
+				test=test.getParent();
 			}
-		});
-		GlobalControl.getControl().getCurrent().getCurrentMenu().add(markItem);
+			if(test!=null){
+				addMenu=((Window)test).getMenu();
+			}
+			markItem=new MenuItem(selected?
+					LocaleManager.getTranslation("flemil.unmark"):
+					LocaleManager.getTranslation("flemil.mark"));
+			markItem.setListener(new MenuCommandListener(){
+
+				public void commandAction(MenuItem item) {
+					keyPressedEvent(
+							GlobalControl.getControl().getMainDisplayCanvas().getKeyCode(Canvas.FIRE));
+					markItem.setName(selected?
+							LocaleManager.getTranslation("flemil.unmark"):
+						LocaleManager.getTranslation("flemil.mark"));
+				}
+			});
+			addMenu.add(markItem);
+			addedItems=true;
+		}
 		repaint(GlobalControl.getControl().getCurrent().getMenuBarRect());
 	}
-	private synchronized void removeMenuItems()
+	private void removeMenuItems()
 	{
-		if(!selectable)return;if(markItem==null)return;
-		GlobalControl.getControl().getCurrent().getCurrentMenu().remove(markItem);
+		synchronized (this) {
+			if(!selectable || !addedItems || addMenu==null)return;if(markItem==null)return;
+			addMenu.remove(markItem);
+			addedItems=false;
+		}
 		repaint(GlobalControl.getControl().getCurrent().getMenuBarRect());
 	}
 	public void focusGained() 
-	{
+	{  
 		if(focussed)return;
 		focussed=true;
         nameDisplayer.focusGained();
@@ -107,6 +129,7 @@ public class CheckBox implements TextItem {
 		int circWid=nameDisplayer.getFont().getHeight()+2;
 		Rectangle tmp=nameDisplayer.getMinimumDisplayRect(availWidth-circWid);
 		tmp.width+=circWid;
+		tmp.height+=2;
 		return tmp;
 	}
 
@@ -162,7 +185,7 @@ public class CheckBox implements TextItem {
         {
         	int radius=((Integer)GlobalControl.getControl().getStyle().
     				getProperty(Style.CURVES_RADIUS)).intValue();
-        	int testHei=nameDisplayer.getFont().getHeight()-4;
+        	int testHei=nameDisplayer.getFont().getHeight()-2;
         	g.setClip(intersect.x, intersect.y, intersect.width, intersect.height);
         	g.setColor(focussed?((Integer)GlobalControl.getControl().getStyle().
     				getProperty(Style.COMPONENT_FOCUS_BACKGROUND)).intValue():
@@ -178,6 +201,10 @@ public class CheckBox implements TextItem {
     		g.drawRoundRect(displayRect.x, displayRect.y, 
     				displayRect.width-1, displayRect.height-1,
     				radius, radius);
+    		g.setColor(focussed?((Integer)GlobalControl.getControl().getStyle().
+    				getProperty(Style.COMPONENT_FOCUS_FOREGROUND)).intValue():
+    					((Integer)GlobalControl.getControl().getStyle().
+    				getProperty(Style.COMPONENT_FOREGROUND)).intValue());
     		if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
     			g.drawRoundRect(displayRect.x+2, displayRect.y+
             			displayRect.height/2-testHei/2, 
@@ -285,8 +312,9 @@ public class CheckBox implements TextItem {
 		if(markItem!=null)markItem.setName(selected?
 				LocaleManager.getTranslation("flemil.unmark"):
 					LocaleManager.getTranslation("flemil.mark"));
-		if(parent!=null && focussed){
+		if(parent!=null){
 			repaint(displayRect);
+			if(focussed)
 			repaint(GlobalControl.getControl().getCurrent().getMenuBarRect());
 		}
 	}
@@ -300,6 +328,7 @@ public class CheckBox implements TextItem {
 
 	public void setParent(Item parent) {
 		this.parent=parent;
+		nameDisplayer.setParent(this);
 	}
 	public byte getAlignment() {
 		return this.nameDisplayer.getAlignment();
@@ -340,12 +369,16 @@ public class CheckBox implements TextItem {
 		return nameDisplayer.isFocussed();
 	}
 
-	public synchronized boolean isScrolling() {
-		return nameDisplayer.isScrolling();
+	public boolean isScrolling() {
+		synchronized (this) {
+			return nameDisplayer.isScrolling();
+		}
 	}
 
-	public synchronized void setScrolling(boolean scrolling) {
-		nameDisplayer.setScrolling(scrolling);
+	public void setScrolling(boolean scrolling) {
+		synchronized (this) {
+			nameDisplayer.setScrolling(scrolling);
+		}
 	}
 
 	public void setTextIndent(int indent) {

@@ -74,12 +74,15 @@ public class PopUpWindow implements Window {
     	this.contentPane=new Panel();
     	//initialize the windows menu
         this.menu=new Menu(LocaleManager.getTranslation("flemil.options"));
+        menu.setParent(this);
         this.title=title;
         this.showTitleBar=showTitleBar;
         titleWidth=((Font)GlobalControl.getControl().getStyle().getProperty(
                 Style.WINDOW_TITLE_FONT)).stringWidth(title);
-        this.contentPane.setParent(this);
-        menu.setParent(this);
+        if(parent!=null)
+        {
+        	this.contentPane.setParent(this);
+        }
     }
     public Rectangle getDisplayRect()
     {
@@ -286,6 +289,7 @@ public class PopUpWindow implements Window {
             		radius);
             g.drawLine(displayRect.x, displayRect.y+displayRect.height-1, displayRect.x+displayRect.width, displayRect.y+displayRect.height-1);
         }
+        g.setClip(clip.x, clip.y, clip.width, clip.height);
     }
     public Rectangle getMinimumDisplayRect(int availWidth)
     {
@@ -303,6 +307,7 @@ public class PopUpWindow implements Window {
 	}
 	public void setDisplayRect(Rectangle rect)
     {
+		if(parent==null)return;
 		displayRect=rect;
         //set the three rects respectively
         //title bar rect
@@ -333,6 +338,7 @@ public class PopUpWindow implements Window {
     }
     public void focusGained()
     {
+    	if(focussed)return;
     	repaint(displayRect);
     	focussed=true;
     	contentPane.focusGained();
@@ -345,6 +351,8 @@ public class PopUpWindow implements Window {
     public void setParent(Item parent)
     {
     	this.parent=(Window)parent;
+    	menu.setParent(this);
+    	contentPane.setParent(this);
     }
     public Item getParent()
     {

@@ -14,6 +14,7 @@ import org.flemil.control.Style;
 import org.flemil.event.TabListener;
 import org.flemil.i18n.LocaleManager;
 import org.flemil.ui.Item;
+import org.flemil.ui.Window;
 import org.flemil.util.Rectangle;
 
 
@@ -33,7 +34,6 @@ public class TabsControl implements Item {
 	private boolean focussed;
 	private Rectangle displayRect;
 	private Item parent;
-	private boolean titlesFocussed;
 	private boolean paintBorder;
 	private int currentIndex=-1;
 	private int drawIndex;
@@ -44,6 +44,7 @@ public class TabsControl implements Item {
 	private Rectangle currentTitleRect;
 	private Vector titles;
 	private TabListener listener;
+	private Vector setRects=new Vector();
 	
 	/**
 	 * Creats a tab control that contains no tabs
@@ -80,24 +81,40 @@ public class TabsControl implements Item {
 	 */
 	public void setSelectedIndex(int index)
 	{
-		if(index>tabItems.size()-1 || index<0)return;
-		if(index>currentIndex)
-		{
-			drawIndex=2;
-			currentIndex=index;
+		synchronized (this) {
+			if(index>tabItems.size()-1 || index<0)return;
+			if(currentIndex<=2 && index<=currentIndex){
+				drawIndex=index;
+			}
+			else{
+				if(index>currentIndex)
+				{
+					drawIndex=2;
+					currentIndex=index;
+				}
+				else if(index<currentIndex)
+				{
+					int diff=currentIndex-index;
+					if(diff>2){
+						drawIndex=0;
+						currentIndex=currentIndex-(diff-2);
+					}
+					else{
+						drawIndex=2-diff;
+					}
+				}
+				else{
+					drawIndex=2;
+				}
+			}
+			if(currentItem!=null && focussed)currentItem.focusLost();
+			textIndent=0;
+			currentItem=(Item)tabItems.elementAt(index);
+			currentTitle=titles.elementAt(index).toString();
+			setItemsRect(currentItem,true);
+			currentItem.focusGained();
+			refreshScroller();
 		}
-		else if(index<currentIndex-2)
-		{
-			drawIndex=0;
-			currentIndex=index+2;
-		}
-		else
-		{
-			drawIndex=2-(currentIndex-index);
-		}
-		currentItem=(Item)tabItems.elementAt(index);
-		currentTitle=titles.elementAt(index).toString();
-		refreshScroller();
 		repaint(displayRect);
 		if(listener!=null){
 			listener.tabSelectionChanged(this);
@@ -110,9 +127,11 @@ public class TabsControl implements Item {
 	 */
 	public void setSelectedItem(Item item)
 	{
-		if(tabItems.contains(item))
-		{
-			setSelectedIndex(tabItems.indexOf(item));
+		synchronized (this) {
+			if(tabItems.contains(item))
+			{
+				setSelectedIndex(tabItems.indexOf(item));
+			}
 		}
 	}
 	/**
@@ -122,30 +141,48 @@ public class TabsControl implements Item {
 	 */
 	public void add(Panel item,String title)
 	{
-    	tabItems.addElement(item);
-    	titles.addElement(title);
-    	item.setParent(this);
-    	if(currentItem==null){
-    		currentItem=item;
-    		currentTitle=title;
-    	}
-    	if(currentIndex<2)currentIndex++;
-    	if(focussed){
-    		refreshScroller();
-    		currentItem.focusGained();
-    	}
-    	if(parent!=null)parent.repaint(getDisplayRect());
+		synchronized (this) {
+			boolean changed=false;
+	    	tabItems.addElement(item);
+	    	titles.addElement(title);
+	    	if(parent!=null)
+	    	item.setParent(this);
+	    	if(currentItem==null){
+	    		currentItem=item;
+	    		currentTitle=title;
+	    		changed=true;
+	    	}
+	    	if(currentIndex<2)currentIndex++;
+	    	if(parent!=null){
+	    		setItemsRect(item,true);
+	        	if(focussed){
+	        		refreshScroller();
+	        		currentItem.focusGained();
+	        	}
+	    	}
+	    	if(changed && listener!=null){
+	    		listener.tabSelectionChanged(this);
+	    	}
+		}
+		repaint(displayRect);
 	}
 	/**
 	 * Removes all the tabs that have been added to this TabsControl
 	 */
 	public void removeAll()
 	{
-		tabItems.removeAllElements();
-		titles.removeAllElements();
-		drawIndex=0;
-		currentIndex=-1;
-		if(focussed)repaint(displayRect);
+		synchronized (this) {
+			if(currentItem!=null){
+				currentItem.focusLost();
+			}
+			tabItems.removeAllElements();
+			titles.removeAllElements();
+			drawIndex=0;
+			currentIndex=-1;
+		}
+		if(parent!=null){
+			repaint(displayRect);
+		}
 	}
 	/**
 	 * Returns the index of the currently selected tab intem in this TabControl
@@ -153,7 +190,9 @@ public class TabsControl implements Item {
 	 */
 	public int getSelectedIndex()
 	{
-		return tabItems.indexOf(currentItem);
+		synchronized (this) {
+			return tabItems.indexOf(currentItem);
+		}
 	}
 	/**
 	 * Removes the specified Item from this TabsControl
@@ -161,60 +200,73 @@ public class TabsControl implements Item {
 	 */
 	public void remove(Item item)
 	{
-		if(item==currentItem)
-    	{
-    		currentItem=null;currentTitle="";
-    		int index=tabItems.indexOf(item);
-    		if(index>0)
-    		{
-    			tabItems.removeElementAt(index);
-    			titles.removeElementAt(index);
-    		}
-    		else if(index==0)
-    		{
-    			tabItems.removeElementAt(index);
-    			titles.removeElementAt(index);
-    		}
-    		if(index<=currentIndex && currentIndex>tabItems.size()-1)
-    		{
-    			currentIndex--;
-    		}
-    		if(drawIndex>currentIndex)
-    		{
-    			drawIndex=currentIndex;
-    		}
-    	}
-		else
-		{
-			if(tabItems.contains(item))
-			{
-				int index=tabItems.indexOf(item);
-				tabItems.removeElementAt(index);
-				titles.removeElementAt(index);
-				if(index<=currentIndex  && currentIndex>tabItems.size()-1)
-				{
-					currentIndex--;
-				}
-				if(drawIndex>currentIndex)
+		synchronized (this) {
+			boolean changed=false;
+			if(item==currentItem)
+	    	{
+				if(focussed)currentItem.focusLost();
+	    		currentItem=null;currentTitle="";
+	    		int index=tabItems.indexOf(item);
+	    		if(index>0)
+	    		{
+	    			tabItems.removeElementAt(index);
+	    			titles.removeElementAt(index);
+	    		}
+	    		else if(index==0)
+	    		{
+	    			tabItems.removeElementAt(index);
+	    			titles.removeElementAt(index);
+	    		}
+	    		if(index<=currentIndex && currentIndex>tabItems.size()-1)
+	    		{
+	    			currentIndex--;
+	    		}
+	    		if(drawIndex>currentIndex)
 	    		{
 	    			drawIndex=currentIndex;
 	    		}
+	    		changed=true;
+	    	}
+			else
+			{
+				if(tabItems.contains(item))
+				{
+					int index=tabItems.indexOf(item);
+					tabItems.removeElementAt(index);
+					titles.removeElementAt(index);
+					if(index<=currentIndex  && currentIndex>tabItems.size()-1)
+					{
+						currentIndex--;
+					}
+					if(drawIndex>currentIndex)
+		    		{
+		    			drawIndex=currentIndex;
+		    		}
+				}
+			}
+			if(!tabItems.isEmpty())
+			{
+				currentItem=(Item)tabItems.elementAt(currentIndex>=2?currentIndex-2+drawIndex:drawIndex);
+				currentTitle=titles.elementAt(currentIndex>=2?currentIndex-2+drawIndex:drawIndex).toString();
+				refreshScroller();
+			}
+			else
+			{
+				drawIndex=0;
+				currentIndex=-1;
+				currentItem=null;
+			}
+			item.setParent(null);
+			if(changed && listener!=null){
+				listener.tabSelectionChanged(this);
 			}
 		}
-		if(!tabItems.isEmpty())
-		{
-			currentItem=(Item)tabItems.elementAt(currentIndex>=2?currentIndex-2+drawIndex:drawIndex);
-			currentTitle=titles.elementAt(currentIndex>=2?currentIndex-2+drawIndex:drawIndex).toString();
-			refreshScroller();
+		if(focussed && currentItem!=null){
+			currentItem.focusGained();
 		}
-		else
-		{
-			drawIndex=0;
-			currentIndex=-1;
-			currentItem=null;
+		if(parent!=null){
+			parent.repaint(displayRect);
 		}
-		if(focussed && currentItem!=null)currentItem.focusGained();
-		if(parent!=null)parent.repaint(getDisplayRect());
 	}
 	/**
 	 * Removes the item at the specified index from this TabsControl
@@ -236,18 +288,24 @@ public class TabsControl implements Item {
 	}
 
 	public void focusGained() {
-		if(focussed || tabItems.isEmpty())return;
+		if(tabItems.isEmpty())return;
 		focussed=true;
-		titlesFocussed=true;
+		if(currentItem!=null && currentItem.isFocusible()){
+			currentItem.focusGained();
+		}
+		repaint(displayRect);
+		refreshScroller();
 	}
 
 	public void focusLost() {
-		focussed=false;
-		titlesFocussed=false;
-        if(currentItem!=null)
-        {
-            currentItem.focusLost();
-        }
+		synchronized (this) {
+			if(!focussed || tabItems.isEmpty())return;
+			focussed=false;
+	        if(currentItem!=null && currentItem.isFocussed())
+	        {
+	            currentItem.focusLost();
+	        }
+		}
         repaint(displayRect);
 	}
 
@@ -256,21 +314,27 @@ public class TabsControl implements Item {
 	}
 
 	public Rectangle getMinimumDisplayRect(int availWidth) {
-		Rectangle rect=new Rectangle();
-		if(GlobalControl.getControl().getCurrent()!=null &&
-				GlobalControl.getControl().getCurrent().isFullScreenOn())
-		{
-			rect=GlobalControl.getControl().getFullScreenRect();
-			rect.height-=4;
+		synchronized (this) {
+			if(parent==null){
+				return new Rectangle(0, 0, availWidth, 5);
+			}
+			else{
+				Rectangle resultRect=new Rectangle(0, 0, availWidth, 5);
+		        if(parent != null)
+		        {
+		        	Item test;
+		            for(test = parent; test != null && !(test instanceof Window) ; test = test.getParent());
+		            if(test!=null && test instanceof Window){
+		            	Window myParent=(Window)test;
+		            	resultRect=new Rectangle(myParent.getContentPane().getDisplayRect());
+		            	resultRect.width=availWidth;
+		            	resultRect.height-=(myParent.getContentPane().getTopMargin()+
+		            			myParent.getContentPane().getBottomMargin()+2);
+		            }
+		        }
+		        return resultRect;
+			}
 		}
-		else
-		{
-			rect.width=GlobalControl.getControl().getDisplayArea().width;
-			rect.height=GlobalControl.getControl().getDisplayArea().height-
-				GlobalControl.getControl().getTitleBGround().getHeight()-
-				GlobalControl.getControl().getMenuBarBGround().getHeight()-5;
-		}
-		return rect;
 	}
 
 	public Item getParent() {
@@ -287,146 +351,131 @@ public class TabsControl implements Item {
     	if(index>-1 && index<tabItems.size())return (Item)tabItems.elementAt(index);
     	return null;
     }
+	public String getTitle(int index)
+    {
+    	if(index>-1 && index<tabItems.size())return (String)titles.elementAt(index);
+    	return null;
+    }
 	public void keyPressedEvent(int keyCode) {
-		if(tabItems.isEmpty())return;
-		if(titlesFocussed)
-		{
-			int key=GlobalControl.getControl().getMainDisplayCanvas().getGameAction(keyCode);
-			if(key==Canvas.DOWN && currentItem.isFocusible())
-			{
-				titlesFocussed=false;
-				currentItem.focusGained();
-			}
-			else if(key==Canvas.UP)
-			{
-				if(parent!=null)parent.keyPressedEventReturned(keyCode);
-			}
-			else{
-				keyPressedEventReturned(keyCode);
-			}
-			repaint(displayRect);
+		if(tabItems.isEmpty()){
+			if(parent!=null)
+    		{
+    			parent.keyPressedEventReturned(keyCode);
+    		}
 			return;
 		}
-		else if(currentItem!=null && currentItem.isFocusible())
+		if(currentItem!=null)
     	{
     		currentItem.keyPressedEvent(keyCode);
     	}
     	else
     	{
-    		if(parent!=null)
-    		{
-    			parent.keyPressedEventReturned(keyCode);
-    		}
+    		keyPressedEventReturned(keyCode);
     	}
 	}
 
 	public void keyPressedEventReturned(int keyCode) {
 		if(tabItems.isEmpty())return;
 		int key=GlobalControl.getControl().getMainDisplayCanvas().getGameAction(keyCode);     
-        switch(key)
-        {
-	        case Canvas.RIGHT:
-	        {
-	        	if(drawIndex>=2 && drawIndex<tabItems.size()-1)
-	        	{
-	        		if(currentIndex<tabItems.size()-1)
-		        	{
-	        			titlesFocussed=true;
-		        		currentIndex++;
-		        		if(focussed)currentItem.focusLost();
-		        		currentItem=(Item)tabItems.elementAt(currentIndex);
-		        		currentTitle=titles.elementAt(currentIndex).toString();
-		        		refreshScroller();
-		        		if(listener!=null){
-		        			listener.tabSelectionChanged(this);
-		        		}
-		        	}
-	        		else if(parent!=null)parent.keyPressedEventReturned(keyCode);
-	        			
-	        	}
-	        	else if(drawIndex<tabItems.size()-1)
-	        	{
-	        		titlesFocussed=true;
-	        		drawIndex++;
-	        		int index=tabItems.indexOf(currentItem);
-	        		if(focussed)currentItem.focusLost();
-	        		currentItem=(Item)tabItems.elementAt(index+1);
-	        		currentTitle=titles.elementAt(index+1).toString();
-	        		refreshScroller();
-//	        		currentItem.focusGained();
-	        		if(listener!=null){
-	        			listener.tabSelectionChanged(this);
-	        		}
-	        	}
-	        	if(focussed)
-	        	{
-	        		repaint(displayRect);
-	        	}
-	        	break;
-	        }
-	        case Canvas.LEFT:
-	        {
-	        	if(drawIndex<=0)
-	        	{
-	        		if(currentIndex>2)
-		        	{
-	        			titlesFocussed=true;
-		        		currentIndex--;
-		        		if(focussed)currentItem.focusLost();
-		        		currentItem=(Item)tabItems.elementAt(currentIndex-2);
-		        		currentTitle=titles.elementAt(currentIndex-2).toString();
-		        		refreshScroller();
-//		        		currentItem.focusGained();
-		        		if(listener!=null){
-		        			listener.tabSelectionChanged(this);
-		        		}
-		        	}
-	        		else if(parent!=null)parent.keyPressedEventReturned(keyCode);
-	        	}
-	        	else
-	        	{
-	        		titlesFocussed=true;
-	        		drawIndex--;
-	        		if(focussed)currentItem.focusLost();
-	        		int index=tabItems.indexOf(currentItem);
-	        		currentItem=(Item)tabItems.elementAt(index-1);
-	        		currentTitle=titles.elementAt(index-1).toString();
-	        		refreshScroller();
-//	        		currentItem.focusGained();
-	        		if(listener!=null){
-	        			listener.tabSelectionChanged(this);
-	        		}
-	        	}
-	        	if(focussed)
-	        	{
-	        		repaint(displayRect);
-	        	}
-	        	break;
-	        }
-	        case Canvas.UP:
-	        {
-	        	if(currentItem.isFocusible())
-	        	{
-	        		currentItem.focusLost();
-	        	}
-	        	if(titlesFocussed && parent!=null)
-        		{
-        			parent.keyPressedEventReturned(keyCode);
-        		}
-        		else
-        		{
-        			titlesFocussed=true;
-        			refreshScroller();
-        		}
-	        	repaint(displayRect);
-	        	break;
-	        }
-	        default:
-	        	if(parent!=null)
-	        	{
-	        		parent.keyPressedEventReturned(keyCode);
-	        	}
-        }
+		switch(key)
+		{
+		case Canvas.RIGHT:
+		{
+			if(drawIndex>=2 && drawIndex<tabItems.size()-1)
+			{
+				if(currentIndex<tabItems.size()-1)
+				{
+					currentIndex++;
+					if(focussed && currentItem!=null)currentItem.focusLost();
+					textIndent=0;
+					currentItem=(Item)tabItems.elementAt(currentIndex);
+					currentTitle=titles.elementAt(currentIndex).toString();
+					setItemsRect(currentItem,true);
+					if(currentItem.isFocusible())currentItem.focusGained();
+					refreshScroller();
+					if(listener!=null){
+						listener.tabSelectionChanged(this);
+					}
+				}
+				else if(parent!=null)parent.keyPressedEventReturned(keyCode);
+			}
+			else if(drawIndex<tabItems.size()-1)
+			{
+				drawIndex++;
+				int index=tabItems.indexOf(currentItem);
+				if(focussed)currentItem.focusLost();
+				textIndent=0;
+				currentItem=(Item)tabItems.elementAt(index+1);
+				currentTitle=titles.elementAt(index+1).toString();
+				setItemsRect(currentItem, true);
+				if(currentItem.isFocusible())currentItem.focusGained();
+				refreshScroller();
+				if(listener!=null){
+					listener.tabSelectionChanged(this);
+				}
+			}
+			if(focussed)
+			{
+				currentItem.focusGained();
+			}
+			break;
+		}
+		case Canvas.LEFT:
+		{
+			if(drawIndex<=0)
+			{
+				if(currentIndex>2)
+				{
+					currentIndex--;
+					if(focussed)currentItem.focusLost();
+					textIndent=0;
+					currentItem=(Item)tabItems.elementAt(currentIndex-2);
+					currentTitle=titles.elementAt(currentIndex-2).toString();
+					setItemsRect(currentItem, true);
+					refreshScroller();
+					if(listener!=null){
+						listener.tabSelectionChanged(this);
+					}
+				}
+				else if(parent!=null)parent.keyPressedEventReturned(keyCode);
+			}
+			else
+			{
+				drawIndex--;
+				if(focussed)currentItem.focusLost();
+				textIndent=0;
+				int index=tabItems.indexOf(currentItem);
+				currentItem=(Item)tabItems.elementAt(index-1);
+				currentTitle=titles.elementAt(index-1).toString();
+				setItemsRect(currentItem, true);
+				if(currentItem.isFocusible())currentItem.focusGained();
+				refreshScroller();
+				if(listener!=null){
+					listener.tabSelectionChanged(this);
+				}
+			}
+			if(focussed)
+			{
+				currentItem.focusGained();
+			}
+			break;
+		}
+		case Canvas.UP:
+		{
+			if(parent!=null)
+			{
+				parent.keyPressedEventReturned(keyCode);
+			}
+			break;
+		}
+		default:{
+			if(parent!=null)
+			{
+				parent.keyPressedEventReturned(keyCode);
+			}
+		}
+		}
+		repaint(displayRect);
 	}
 
 	public void keyReleasedEvent(int keyCode) {}
@@ -442,26 +491,26 @@ public class TabsControl implements Item {
 	public void paint(Graphics g, Rectangle clip) {
 		if(displayRect.width<2 || tabItems.isEmpty())return;
 		Rectangle intersect=null;
-        if((intersect=this.displayRect.calculateIntersection(clip))!=null)
-        {
-        	int radius=((Integer)GlobalControl.getControl().getStyle().
-    				getProperty(Style.BUTTON_CURVE_RADIUS)).intValue();
-        	g.setClip(intersect.x, intersect.y, intersect.width, intersect.height);
-        	Rectangle titlesRect=new Rectangle(displayRect.x,displayRect.y,displayRect.width,
-        			GlobalControl.getControl().getTabBGround().getHeight());
-        	Rectangle intersect2=null;
-        	if((intersect2=titlesRect.calculateIntersection(intersect))!=null)
-        	{
-        		g.setClip(intersect2.x, intersect2.y, intersect2.width, intersect2.height);
-        		if(currentIndex>2 || tabItems.size()-1>currentIndex)
-            	{
-            		if(currentIndex>2)
-            		{
-            			g.drawImage(arrow, displayRect.x+3, 
-            					intersect2.y+intersect2.height/2-arrow.getHeight()/2,
-            					Graphics.TOP|Graphics.LEFT);
-            		}
-            		if(tabItems.size()-1>currentIndex && tabItems.size()>3)
+		if((intersect=this.displayRect.calculateIntersection(clip))!=null)
+		{
+			int radius=((Integer)GlobalControl.getControl().getStyle().
+					getProperty(Style.BUTTON_CURVE_RADIUS)).intValue();
+			g.setClip(intersect.x, intersect.y, intersect.width, intersect.height);
+			Rectangle titlesRect=new Rectangle(displayRect.x,displayRect.y,displayRect.width,
+					GlobalControl.getControl().getTabBGround().getHeight());
+			Rectangle intersect2=null;
+			if((intersect2=titlesRect.calculateIntersection(intersect))!=null)
+			{
+				g.setClip(intersect2.x, intersect2.y, intersect2.width, intersect2.height);
+				if(currentIndex>2 || tabItems.size()-1>currentIndex)
+				{
+					if(currentIndex>2)
+					{
+						g.drawImage(arrow, displayRect.x+3, 
+								intersect2.y+intersect2.height/2-arrow.getHeight()/2,
+								Graphics.TOP|Graphics.LEFT);
+					}
+					if(tabItems.size()-1>currentIndex && tabItems.size()>3)
             		{
             			g.drawRegion(arrow, 0,0,arrow.getWidth(),arrow.getHeight(),Sprite.TRANS_MIRROR,
             					displayRect.x+displayRect.width-arrow.getWidth()-2,
@@ -602,7 +651,7 @@ public class TabsControl implements Item {
         				currentTitleRect.width-2, currentTitleRect.height);
         		if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
         			int start=textWidth>currentTitleRect.width-2?currentTitleRect.x+textIndent+1:
-            			currentTitleRect.x+currentTitleRect.width/2-textWidth/2;
+            			currentTitleRect.x+currentTitleRect.width/2-textWidth/2+1;
             		g.drawString(currentTitle, start,
             				titlesRect.y+1, Graphics.TOP|Graphics.LEFT);
         		}
@@ -621,18 +670,24 @@ public class TabsControl implements Item {
         g.setClip(clip.x, clip.y, clip.width, clip.height);
 	}
 
-	public void pointerDraggedEvent(int x, int y) {}
+	public void pointerDraggedEvent(int x, int y) {
+		if(currentItem.getDisplayRect().contains(x, y, 0)){
+			currentItem.pointerDraggedEvent(x, y);
+		}
+	}
 
 	public void pointerDraggedEventReturned(int x, int y) {}
 
 	public void pointerPressedEvent(int x, int y) {
+		if(currentItem.getDisplayRect().contains(x, y, 0)){
+			currentItem.pointerPressedEvent(x, y);
+		}
 	}
 
 	public void pointerPressedEventReturned(int x, int y) {}
 
 	public void pointerReleasedEvent(int x, int y) {
 		if(currentItem.getDisplayRect().contains(x, y, 0)){
-			titlesFocussed=false;
 			currentItem.pointerReleasedEvent(x, y);
 		}
 		else{
@@ -670,6 +725,7 @@ public class TabsControl implements Item {
 			        		currentTitle=titles.elementAt(currentIndex-(2-i)).toString();
 						}
 		        		drawIndex=i;
+		        		setItemsRect(currentItem, true);
 		        		refreshScroller();
 		        		if(listener!=null){
 		        			listener.tabSelectionChanged(this);
@@ -694,54 +750,79 @@ public class TabsControl implements Item {
 	}
 	private void refreshScroller()
 	{
-		setCurrentItemsRect();
-		int imgWidth=((Font)GlobalControl.getControl().getStyle().getProperty(
-				Style.WINDOW_TITLE_FONT)).stringWidth("M")+3;
-		int availWid=displayRect.width-imgWidth*2;
-		currentTitleRect=new Rectangle(displayRect.x+imgWidth+(drawIndex*availWid)/3,
-				displayRect.y,availWid/3,
-				GlobalControl.getControl().getTitleBGround().getHeight()+4);
-		textWidth=((Font)GlobalControl.getControl().getStyle().
-				getProperty(Style.WINDOW_TITLE_FONT)).stringWidth(currentTitle)+2;
-		int diff=textWidth-currentTitleRect.width-2;
-        if(diff>0)
-        {
-            new Thread(new TitleScroller()).start();
-        }
-        else
-        {
-        	scrolling=false;
-        	textIndent=0;
-        }
+		synchronized (this) {
+			int imgWidth=((Font)GlobalControl.getControl().getStyle().getProperty(
+					Style.WINDOW_TITLE_FONT)).stringWidth("M")+3;
+			int availWid=displayRect.width-imgWidth*2;
+			currentTitleRect=new Rectangle(displayRect.x+imgWidth+(drawIndex*availWid)/3,
+					displayRect.y,availWid/3,
+					GlobalControl.getControl().getTitleBGround().getHeight()+4);
+			textWidth=((Font)GlobalControl.getControl().getStyle().
+					getProperty(Style.WINDOW_TITLE_FONT)).stringWidth(currentTitle)+2;
+			int diff=textWidth-currentTitleRect.width-2;
+	        if(diff>0)
+	        {
+	            new Thread(new TitleScroller()).start();
+	        }
+	        else
+	        {
+	        	scrolling=false;
+	        	textIndent=0;
+	        }
+		}
+        repaint(displayRect);
 	}
-	public synchronized void setDisplayRect(Rectangle rect) {
-		this.displayRect=rect;
-		int imgWidth=((Font)GlobalControl.getControl().getStyle().getProperty(
-				Style.WINDOW_TITLE_FONT)).stringWidth("M");
-		try
-		{
-			arrow=GlobalControl.getImageFactory().scaleImage(Image.createImage("/arrow.png"), imgWidth,
-					((Font)GlobalControl.getControl().getStyle().getProperty(
-							Style.WINDOW_TITLE_FONT)).getHeight()-2, Sprite.TRANS_NONE);
-		}catch(IOException ioe){ioe.printStackTrace();}
+	public void setDisplayRect(Rectangle rect) {
+		synchronized (this) {
+			if(parent==null)return;
+			setRects.removeAllElements();
+			this.displayRect=rect;
+			int imgWidth=((Font)GlobalControl.getControl().getStyle().getProperty(
+					Style.WINDOW_TITLE_FONT)).stringWidth("M");
+			try
+			{
+				arrow=GlobalControl.getImageFactory().scaleImage(Image.createImage("/arrow.png"), imgWidth,
+						((Font)GlobalControl.getControl().getStyle().getProperty(
+								Style.WINDOW_TITLE_FONT)).getHeight()-2, Sprite.TRANS_NONE);
+			}catch(IOException ioe){
+//				ioe.printStackTrace();
+				}
+			for(int i=0;i<tabItems.size();i++){
+				setItemsRect((Item)tabItems.elementAt(i), true);
+			}
+		}
+		repaint(displayRect);
 		refreshScroller();
 	}
-	private void setCurrentItemsRect()
+	public void setItemsRect(Item item, boolean check)
 	{
-		int unitHeight=GlobalControl.getControl().getTabBGround().getHeight();
-		if(displayRect.width<=1 ||
-				displayRect.height<unitHeight)return;
-		Rectangle contentRect=new Rectangle(displayRect.x+1,displayRect.y+unitHeight
-				,displayRect.width-2,
-				displayRect.height-unitHeight);
-		if(currentItem!=null)
-		{
-			currentItem.setDisplayRect(contentRect);
+		if(check && setRects.contains(item))return;
+		synchronized (this) {
+			int unitHeight=GlobalControl.getControl().getTabBGround().getHeight();
+			if(displayRect.width<=1 ||
+					displayRect.height<unitHeight)return;
+			Rectangle contentRect=new Rectangle(displayRect.x+1,displayRect.y+unitHeight
+					,displayRect.width-2,
+					displayRect.height-unitHeight);
+			item.setDisplayRect(contentRect);
+			setRects.addElement(item);
+		}
+		if(item.equals(currentItem)){
+			currentItem.focusGained();
+			repaint(displayRect);
 		}
 	}
 
 	public void setParent(Item parent) {
 		this.parent=parent;
+		setRects.removeAllElements();
+		try {
+			for(int i=0;i<tabItems.size();i++){
+				((Item)tabItems.elementAt(i)).setParent(this);
+			}
+		} catch (Exception e) {
+//			e.printStackTrace();
+		}
 	}
 
 	public boolean isPaintBorder() {
@@ -766,7 +847,7 @@ public class TabsControl implements Item {
             scrolling=true;
             //the variable for the increment
             int increment=-GlobalControl.getTextScrollSpeed();
-            while(focussed && scrolling && titlesFocussed)
+            while(focussed && scrolling)
             {
                 //calculate the between name and available display area
                 int diff=textWidth-currentTitleRect.width;
@@ -777,18 +858,18 @@ public class TabsControl implements Item {
                 }catch(InterruptedException ie){}
                 if(textIndent<-diff || textIndent>=0)
                 {
-                	repaint(currentTitleRect);
+                	repaint(new Rectangle(currentTitleRect.x, currentTitleRect.y, currentTitleRect.width, currentTitleRect.height-4));
                 	try{Thread.sleep(1200);}catch(InterruptedException ie){}
                 	refreshScroller();
                 	if(!scrolling)break;
                 	textIndent=0;
-                	repaint(currentTitleRect);
+                	repaint(new Rectangle(currentTitleRect.x, currentTitleRect.y, currentTitleRect.width, currentTitleRect.height-4));
                 	try{Thread.sleep(1500);}catch(InterruptedException ie){}
                 	refreshScroller();
                 	if(!scrolling)break;
                 }
                 textIndent+=increment;
-                repaint(currentTitleRect);
+                repaint(new Rectangle(currentTitleRect.x, currentTitleRect.y, currentTitleRect.width, currentTitleRect.height-4));
             }
             textIndent=0;
             scrolling=false;
@@ -813,5 +894,21 @@ public class TabsControl implements Item {
 	}
 	public TabListener getListener() {
 		return listener;
+	}
+	void refreshItemsRect(Panel parentWindowPane) {
+		synchronized (this) {
+			setRects.removeElement(parentWindowPane);
+			setItemsRect(parentWindowPane, true);
+		}
+	}
+	public void setTitle(int selectedIndex, String title) {
+		synchronized (this) {
+			titles.insertElementAt(title, selectedIndex);
+			titles.removeElementAt(selectedIndex+1);
+			if(selectedIndex==getSelectedIndex()){
+				currentTitle=title;
+			}
+			refreshScroller();
+		}
 	}
 }

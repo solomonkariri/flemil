@@ -29,7 +29,8 @@ public class Gauge implements Item{
 	private int min;
 	private int max;
 	private int value;
-	public boolean autosctolling;
+	private boolean autoscrolling;
+	private boolean animated;
 	public static final int INDEFINITE=Integer.MIN_VALUE;
 	
 	/**
@@ -59,6 +60,8 @@ public class Gauge implements Item{
 		this.value=value;
 		if(maxValue==Gauge.INDEFINITE)
 		{
+			animated=true;
+			this.interactive=false;
 			new Thread(new Worker()).start();
 		}
 	}
@@ -179,13 +182,17 @@ public class Gauge implements Item{
         	g.setClip(intersect.x, intersect.y, intersect.width, intersect.height);
         	int ratio=(value*(displayRect.width))/max;
         	int ratio2=(value*(displayRect.width-8))/max;
-        	g.setColor(((Integer)GlobalControl.getControl().getStyle().
-    				getProperty(Style.COMPONENT_FOCUS_FOREGROUND)).intValue());
+        	g.setColor(focussed?((Integer)GlobalControl.getControl().getStyle().
+    				getProperty(Style.COMPONENT_FOCUS_FOREGROUND)).intValue():
+    					((Integer)GlobalControl.getControl().getStyle().
+    				getProperty(Style.COMPONENT_FOREGROUND)).intValue());
         	g.fillRoundRect(displayRect.x+1, displayRect.y+2, 
     				ratio, displayRect.height-4,
     				radius, radius);
-    		g.setColor(((Integer)GlobalControl.getControl().getStyle().
-    				getProperty(Style.COMPONENT_FOCUS_BACKGROUND)).intValue());
+        	g.setColor(focussed?((Integer)GlobalControl.getControl().getStyle().
+    				getProperty(Style.COMPONENT_FOCUS_BACKGROUND)).intValue():
+    					((Integer)GlobalControl.getControl().getStyle().
+    				getProperty(Style.COMPONENT_BACKGROUND)).intValue());
     		g.fillRoundRect(displayRect.x+ratio, displayRect.y+2, 
     				displayRect.width-ratio-1, displayRect.height-4,
     				radius, radius);
@@ -196,9 +203,26 @@ public class Gauge implements Item{
     		g.drawRoundRect(displayRect.x+1, displayRect.y+2, 
     				displayRect.width-2, displayRect.height-4,
     				radius, radius);
+    		g.setColor(focussed?((Integer)GlobalControl.getControl().getStyle().
+    				getProperty(Style.COMPONENT_OUTLINE_COLOR)).intValue():
+    					((Integer)GlobalControl.getControl().getStyle().
+    				getProperty(Style.COMPONENT_FOCUS_OUTLINE_COLOR)).intValue());
+    		g.drawRoundRect(displayRect.x+2, displayRect.y+3, 
+    				displayRect.width-4, displayRect.height-6,
+    				radius, radius);
     		if(interactive)
     		{
+    			g.setColor(focussed?((Integer)GlobalControl.getControl().getStyle().
+        				getProperty(Style.COMPONENT_FOCUS_OUTLINE_COLOR)).intValue():
+        					((Integer)GlobalControl.getControl().getStyle().
+        				getProperty(Style.COMPONENT_OUTLINE_COLOR)).intValue());
     			g.fillRoundRect(displayRect.x+ratio2, displayRect.y, 8, displayRect.height,
+            			radius, radius);
+    			g.setColor(focussed?((Integer)GlobalControl.getControl().getStyle().
+        				getProperty(Style.COMPONENT_OUTLINE_COLOR)).intValue():
+        					((Integer)GlobalControl.getControl().getStyle().
+        				getProperty(Style.COMPONENT_FOCUS_OUTLINE_COLOR)).intValue());
+    			g.fillRoundRect(displayRect.x+ratio2+2, displayRect.y+1, 4, displayRect.height-2,
             			radius, radius);
     		}
     		g.setClip(clip.x, clip.y, clip.width, clip.height);
@@ -213,7 +237,14 @@ public class Gauge implements Item{
 
 	public void pointerPressedEventReturned(int x, int y) {}
 
-	public void pointerReleasedEvent(int x, int y) {}
+	public void pointerReleasedEvent(int x, int y) {
+		if(interactive){
+			if(displayRect.contains(x, y, 0)){
+				int coveredWidth=x-displayRect.x+6;
+				setValue((coveredWidth*(max-min))/displayRect.width);
+			}
+		}
+	}
 
 	public void pointerReleasedEventReturned(int x, int y) {}
 
@@ -238,6 +269,9 @@ public class Gauge implements Item{
 
 	public void setParent(Item parent) {
 		this.parent=parent;
+		if(animated && !autoscrolling){
+			new Thread(new Worker()).start();
+		}
 	}
 	/**
 	 * Sets the class that is to be called when this Gauge's value changes
@@ -260,20 +294,23 @@ public class Gauge implements Item{
 	 * @param value
 	 */
 	public void setValue(int value) {
-		this.value = value;
+		int remainder=value%stepSize;
+		this.value = value+remainder;
 		repaint(displayRect);
 	}
 	public void setMaxValue(int maxValue)
 	{
 		if(maxValue==Gauge.INDEFINITE)
 		{
+			animated=true;
 			interactive=false;
 			if(focussed)focusLost();
 			new Thread(new Worker()).start();
 		}
 		else
 		{
-			autosctolling=false;
+			animated=false;
+			autoscrolling=false;
 			max=maxValue;
 		}
 		repaint(displayRect);
@@ -282,10 +319,10 @@ public class Gauge implements Item{
 	{
 		public void run()
 		{
-			if(autosctolling)
+			if(!animated || autoscrolling)
 			return;
-			autosctolling=true;
-			while(autosctolling && parent!=null)
+			autoscrolling=true;
+			while(autoscrolling && parent!=null && animated)
 			{
 				try
 				{
@@ -296,6 +333,7 @@ public class Gauge implements Item{
 				setValue(newValue);
 				repaint(displayRect);
 			}
+			autoscrolling=false;
 		}
 	}
 	public boolean isFocussed() {

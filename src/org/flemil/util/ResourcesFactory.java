@@ -39,6 +39,16 @@ public class ResourcesFactory {
         			if(splitPoint!=-1){
             			String property=currentInput.substring(0,splitPoint);
         				String value=currentInput.substring(splitPoint+1);
+        				if(value.indexOf("\\n")!=-1){
+        					StringBuffer buff=new StringBuffer();
+        					String[] splits=StringUtils.split(value, "\\n");
+        					for(int i=0;i<splits.length-1;i++){
+        						buff.append(splits[i]);
+        						buff.append("\n");
+        					}
+        					buff.append(splits[splits.length-1]);
+        					value=buff.toString();
+        				}
         				translations.put(property, value);
         			}
         		}
@@ -73,6 +83,16 @@ public class ResourcesFactory {
     			if(splitPoint!=-1){
         			String property=currentInput.substring(0,splitPoint);
     				String value=currentInput.substring(splitPoint+1);
+    				if(value.indexOf("\\n")!=-1){
+    					StringBuffer buff=new StringBuffer();
+    					String[] splits=StringUtils.split(value, "\\n");
+    					for(int i=0;i<splits.length-1;i++){
+    						buff.append(splits[i]);
+    						buff.append("\n");
+    					}
+    					buff.append(splits[splits.length-1]);
+    					value=buff.toString();
+    				}
     				translations.put(property, value);
     			}
     		}

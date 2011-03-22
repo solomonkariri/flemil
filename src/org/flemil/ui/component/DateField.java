@@ -11,14 +11,16 @@ import javax.microedition.lcdui.Image;
 import javax.microedition.lcdui.game.Sprite;
 
 import org.flemil.control.GlobalControl;
+import org.flemil.control.GlobalControl.LayoutSwitchListener;
 import org.flemil.event.ImageItemListener;
 import org.flemil.event.MenuCommandListener;
+import org.flemil.event.TextItemListener;
 import org.flemil.i18n.LocaleManager;
 import org.flemil.ui.Item;
 import org.flemil.ui.TextItem;
 import org.flemil.util.Rectangle;
 
-public class DateField implements Item{
+public class DateField implements Item, TextItemListener{
 	public static final int DATE=1;
 	public static final int TIME=2;
 	public static final int DATETIME=3;
@@ -51,7 +53,7 @@ public class DateField implements Item{
 	private static Image upArrow;
 	private static Image downArrow;
 	
-	private static Grid timeGrid;
+	private static Grid[] timeGrid;
 	
 	private static MenuItem saveDateItem;
 	private static MenuItem backDateItem;
@@ -92,6 +94,7 @@ public class DateField implements Item{
 	private static TimeSelectionWindow timeWindow;
 	
 	static boolean inited;
+	private static boolean populating;
 	
 	public DateField(int mode){
 		this(mode, null);
@@ -115,15 +118,22 @@ public class DateField implements Item{
 						leftArrow.getWidth(), 
 						Sprite.TRANS_ROT270);
 			} catch (IOException e) {
-				e.printStackTrace();
+//				e.printStackTrace();
 			}
 			yearGrid=new Grid(1, 5);
 			monthGrid=new Grid(1, 5);
 			datesGrid=new Grid(7, 7);
-			timeGrid=new Grid(3, 4);
+			timeGrid=new Grid[]{
+					new Grid(1, 5),
+					new Grid(1, 4),
+					new Grid(1, 5)
+			};
 			dateWindow=new DateSelectionWindow(LocaleManager.getTranslation("flemil.selectdate"));
 			dateWindow.getContentPane().setAlignment(
 					Panel.SPAN_FULL_WIDTH|Panel.CENTER_VERTICAL_ALIGN);
+			DateField.dateWindow.getContentPane().add(yearGrid);
+			DateField.dateWindow.getContentPane().add(monthGrid);
+			DateField.dateWindow.getContentPane().add(datesGrid);
 			//add the year label
 			yearGrid.setColumnsDistribution(new int[]{25,5,40,5,25});
 			monthGrid.setColumnsDistribution(new int[]{15,5,60,5,15});
@@ -141,11 +151,11 @@ public class DateField implements Item{
 			imgIt.setPaintBorder(false);
 			imgIt.setListener(leftListener);
 			yearGrid.add(imgIt);
-			TextField txtField=new TextField("",5,javax.microedition.lcdui.TextField.ANY);
-			txtField.setEditable(false);
+			TextField txtField=new TextField("",7,javax.microedition.lcdui.TextField.NUMERIC);
 			txtField.setAlignment(TextItem.ALIGN_CENTER);
 			txtField.setPaintBorder(false);
 			txtField.setTextWraps(false);
+			txtField.setTextListener(this);
 			yearGrid.add(txtField);
 			if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
 				imgIt=new ImageItem(rightArrow);
@@ -172,12 +182,12 @@ public class DateField implements Item{
 			imgIt.setPaintBorder(false);
 			imgIt.setListener(leftListener);
 			monthGrid.add(imgIt);
-			txtField=new TextField("",40,javax.microedition.lcdui.TextField.ANY);
-			txtField.setEditable(false);
-			txtField.setAlignment(TextItem.ALIGN_CENTER);
-			txtField.setPaintBorder(false);
-			txtField.setTextWraps(false);
-			monthGrid.add(txtField);
+			ComboBox monthBox=new ComboBox(months);
+			monthBox.setAlignment(TextItem.ALIGN_CENTER);
+			monthBox.setPaintBorder(false);
+			monthBox.setTextWraps(false);
+			monthBox.setTextListener(this);
+			monthGrid.add(monthBox);
 			if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
 				imgIt=new ImageItem(rightArrow);
 			}
@@ -221,9 +231,11 @@ public class DateField implements Item{
 			saveDateItem.setListener(listener);
 			backDateItem.setListener(listener);
 			
-			timeGrid.setColumnsDistribution(new int[]{30,20,20,30});
+			timeGrid[0].setColumnsDistribution(new int[]{35,10,10,10,35});
+			timeGrid[1].setColumnsDistribution(new int[]{30,20,20,30});
+			timeGrid[2].setColumnsDistribution(new int[]{35,10,10,10,35});
 			
-			timeGrid.add(new Label(""));
+			timeGrid[0].add(new Label(""));
 			
 			imgIt=new ImageItem(upArrow);
 			imgIt.setResizeToFit(true);
@@ -231,7 +243,8 @@ public class DateField implements Item{
 			imgIt.setPaintBorder(false);
 			imgIt.setListener(upleftListener);
 			
-			timeGrid.add(imgIt);
+			timeGrid[0].add(imgIt);
+			timeGrid[0].add(new Label(""));
 			
 			imgIt=new ImageItem(upArrow);
 			imgIt.setResizeToFit(true);
@@ -240,9 +253,10 @@ public class DateField implements Item{
 			imgIt.setListener(upRightListener);
 			
 			
-			timeGrid.add(imgIt);
-			timeGrid.add(new Label(""));
-			timeGrid.add(new Label(""));
+			timeGrid[0].add(imgIt);
+			timeGrid[0].add(new Label(""));
+			
+			timeGrid[1].add(new Label(""));
 			
 			txtField=new TextField("",4,javax.microedition.lcdui.TextField.ANY);
 			txtField.setEditable(false);
@@ -250,7 +264,7 @@ public class DateField implements Item{
 			txtField.setPaintBorder(false);
 			txtField.setTextWraps(false);
 			
-			timeGrid.add(txtField);
+			timeGrid[1].add(txtField);
 			
 			txtField=new TextField("",4,javax.microedition.lcdui.TextField.ANY);
 			txtField.setEditable(false);
@@ -258,9 +272,10 @@ public class DateField implements Item{
 			txtField.setPaintBorder(false);
 			txtField.setTextWraps(false);
 			
-			timeGrid.add(txtField);
-			timeGrid.add(new Label(LocaleManager.getTranslation("flemil.hours")));
-			timeGrid.add(new Label(""));
+			timeGrid[1].add(txtField);
+			timeGrid[1].add(new Label(LocaleManager.getTranslation("flemil.hours")));
+			
+			timeGrid[2].add(new Label(""));
 			
 			imgIt=new ImageItem(downArrow);
 			imgIt.setResizeToFit(true);
@@ -268,7 +283,8 @@ public class DateField implements Item{
 			imgIt.setPaintBorder(false);
 			imgIt.setListener(downLeftListener);
 			
-			timeGrid.add(imgIt);
+			timeGrid[2].add(imgIt);
+			timeGrid[2].add(new Label(""));
 			
 			imgIt=new ImageItem(downArrow);
 			imgIt.setResizeToFit(true);
@@ -276,12 +292,14 @@ public class DateField implements Item{
 			imgIt.setPaintBorder(false);
 			imgIt.setListener(downRightListener);
 			
-			timeGrid.add(imgIt);
-			timeGrid.add(new Label(""));
+			timeGrid[2].add(imgIt);
+			timeGrid[2].add(new Label(""));
 			
 			timeWindow=new TimeSelectionWindow(LocaleManager.getTranslation("flemil.tim"), true);
 			timeWindow.getContentPane().setAlignment(Panel.CENTER_HORIZONTAL_ALIGN);
-			timeWindow.getContentPane().add(timeGrid);
+			timeWindow.getContentPane().add(timeGrid[0]);
+			timeWindow.getContentPane().add(timeGrid[1]);
+			timeWindow.getContentPane().add(timeGrid[2]);
 			
 			saveTimeItem=new MenuItem(LocaleManager.getTranslation("flemil.save"));
 			backTimeItem=new MenuItem(LocaleManager.getTranslation("flemil.back"));
@@ -292,6 +310,7 @@ public class DateField implements Item{
 			backTimeItem.setListener(timeListener);
 			
 			inited=true;
+			GlobalControl.getControl().addLayoutSwitchListener(new ThemeChangeListener());
 		}
 		this.mode=mode;
 		this.date=date;
@@ -319,6 +338,14 @@ public class DateField implements Item{
 		}
 		if(this.mode==DateField.DATETIME){
 			fieldsGrid.setColumnsDistribution(new int[]{60,40});
+		}
+	}
+	
+	class ThemeChangeListener implements LayoutSwitchListener{
+		public void layoutChanged() {
+			if(dateWindow.getDisplayRect().equals(GlobalControl.getControl().getDisplayArea())){
+				dateWindow.setDisplayRect(new Rectangle(GlobalControl.getControl().getDisplayArea()));
+			}
 		}
 	}
 	
@@ -359,48 +386,54 @@ public class DateField implements Item{
 		}
 	}
 	private static void populateFieldsForDate(Calendar cal){
-		((TextItem)yearGrid.getItemAt(0, 2)).setText(""+cal.get(Calendar.YEAR));
-		((TextItem)monthGrid.getItemAt(0, 2)).setText(months[cal.get(Calendar.MONTH)]);
-		Calendar testCalendar=Calendar.getInstance();
-		testCalendar.setTime(cal.getTime());
-		testCalendar.set(Calendar.DATE, 1);
-		int start=testCalendar.get(Calendar.DAY_OF_WEEK)-1;
-		int dayCount=daysCount[cal.get(Calendar.MONTH)];
-		if(dayCount==28)dayCount+=(cal.get(Calendar.YEAR)%4==0)?1:0;
-		int row;
-		int col;
-		for(int i=start;i<start+dayCount;i++){
-			row=i/7;
-			col=i%7;
-			((TextField)datesGrid.getItemAt(row+1, col)).setFocusible(true);
-			((TextField)datesGrid.getItemAt(row+1, col)).setText(""+(i-start+1));
-			if(cal.get(Calendar.DATE)==(i-start+1)){
-				datesGrid.setSelectedCell(row+1, col);
+		synchronized (DateField.class) {
+			populating=true;
+			((TextItem)yearGrid.getItemAt(0, 2)).setText(""+cal.get(Calendar.YEAR));
+			((TextItem)monthGrid.getItemAt(0, 2)).setText(months[cal.get(Calendar.MONTH)]);
+			Calendar testCalendar=Calendar.getInstance();
+			testCalendar.setTime(cal.getTime());
+			testCalendar.set(Calendar.DATE, 1);
+			int start=testCalendar.get(Calendar.DAY_OF_WEEK)-1;
+			int dayCount=daysCount[cal.get(Calendar.MONTH)];
+			if(dayCount==28)dayCount+=(cal.get(Calendar.YEAR)%4==0)?1:0;
+			int row;
+			int col;
+			for(int i=0;i<start;i++){
+				row=i/7;
+				col=i%7;
+				((TextField)datesGrid.getItemAt(row+1, col)).setFocusible(false);
+				((TextField)datesGrid.getItemAt(row+1, col)).setText("");
 			}
-		}
-		for(int i=0;i<start;i++){
-			row=i/7;
-			col=i%7;
-			((TextField)datesGrid.getItemAt(row+1, col)).setFocusible(false);
-			((TextField)datesGrid.getItemAt(row+1, col)).setText("");
-		}
-		for(int i=start+dayCount;i<42;i++){
-			row=i/7;
-			col=i%7;
-			((TextField)datesGrid.getItemAt(row+1, col)).setFocusible(false);
-			((TextField)datesGrid.getItemAt(row+1, col)).setText("");
+			for(int i=start+dayCount;i<42;i++){
+				row=i/7;
+				col=i%7;
+				((TextField)datesGrid.getItemAt(row+1, col)).setFocusible(false);
+				((TextField)datesGrid.getItemAt(row+1, col)).setText("");
+			}
+			for(int i=start;i<start+dayCount;i++){
+				row=i/7;
+				col=i%7;
+				((TextField)datesGrid.getItemAt(row+1, col)).setFocusible(true);
+				((TextField)datesGrid.getItemAt(row+1, col)).setText(""+(i-start+1));
+				if(cal.get(Calendar.DATE)==(i-start+1)){
+					datesGrid.setSelectedCell(row+1, col);
+				}
+			}
+			populating=false;
 		}
 		dateWindow.repaint(dateWindow.getDisplayRect());
 	}
 	
 	private static void populateFieldsForTime(Calendar cal){
-		((TextItem)timeGrid.getItemAt(1, 1)).setText(
-				cal.get(Calendar.HOUR_OF_DAY)<10?
-						"0"+cal.get(Calendar.HOUR_OF_DAY):
-							""+cal.get(Calendar.HOUR_OF_DAY));
-		((TextItem)timeGrid.getItemAt(1, 2)).setText(
-				cal.get(Calendar.MINUTE)<10?"0"+cal.get(Calendar.MINUTE):
-					""+cal.get(Calendar.MINUTE));
+		synchronized (DateField.class) {
+			((TextItem)timeGrid[1].getItemAt(0, 1)).setText(
+					cal.get(Calendar.HOUR_OF_DAY)<10?
+							"0"+cal.get(Calendar.HOUR_OF_DAY):
+								""+cal.get(Calendar.HOUR_OF_DAY));
+			((TextItem)timeGrid[1].getItemAt(0, 2)).setText(
+					cal.get(Calendar.MINUTE)<10?"0"+cal.get(Calendar.MINUTE):
+						""+cal.get(Calendar.MINUTE));
+		}
 	}
 	
 	public void focusGained() {
@@ -458,30 +491,37 @@ public class DateField implements Item{
 	}
 
 	private void showTimeChangeWindow() {
-		calendar=Calendar.getInstance();
-		if(date!=null){
-			calendar.setTime(date);
+		synchronized (this) {
+			calendar=Calendar.getInstance();
+			if(date!=null){
+				calendar.setTime(date);
+			}
+			populateFieldsForTime(calendar);
+			timeWindow.getContentPane().removeAll();
+			timeWindow.getContentPane().add(timeGrid[0]);
+			timeWindow.getContentPane().add(timeGrid[1]);
+			timeWindow.getContentPane().add(timeGrid[2]);
+			currentDateField=this;
+			GlobalControl.getControl().getCurrent().showPopUp(timeWindow);
 		}
-		populateFieldsForTime(calendar);
-		timeWindow.getContentPane().removeAll();
-		timeWindow.getContentPane().add(timeGrid);
-		currentDateField=this;
-		GlobalControl.getControl().getCurrent().showPopUp(timeWindow);
 	}
 
 	private void showDateChangeWindow() {
-		previousWindow=GlobalControl.getControl().getCurrent();
-		calendar=Calendar.getInstance();
-		if(date!=null){
-			calendar.setTime(date);
+		synchronized (this) {
+			previousWindow=GlobalControl.getControl().getCurrent();
+			calendar=Calendar.getInstance();
+			if(date!=null){
+				calendar.setTime(date);
+			}
+			populateFieldsForDate(calendar);
+			currentDateField=this;
+			if(dateWindow.getDisplayRect().equals(GlobalControl.getControl().getDisplayArea())){
+				GlobalControl.getControl().setDisplayedWindow(dateWindow);
+			}
+			else{
+				GlobalControl.getControl().setCurrent(dateWindow);
+			}
 		}
-		populateFieldsForDate(calendar);
-		DateField.dateWindow.getContentPane().removeAll();
-		DateField.dateWindow.getContentPane().add(yearGrid);
-		DateField.dateWindow.getContentPane().add(monthGrid);
-		DateField.dateWindow.getContentPane().add(datesGrid);
-		currentDateField=this;
-		GlobalControl.getControl().setCurrent(dateWindow);
 	}
 
 	public void keyPressedEventReturned(int keyCode) {}
@@ -528,7 +568,6 @@ public class DateField implements Item{
 
 	public void setDisplayRect(Rectangle rect) {
 		fieldsGrid.setDisplayRect(rect);
-		dateWindow.setDisplayRect(new Rectangle());
 		timeWindow.setDisplayRect(new Rectangle());
 	}
 
@@ -642,7 +681,7 @@ public class DateField implements Item{
 			int key=GlobalControl.getControl().getMainDisplayCanvas().getGameAction(keyCode);
 			switch(key){
 			case Canvas.UP:{
-				if(timeGrid.getSelectedColumn()==1){
+				if(timeGrid[1].getSelectedColumn()==1){
 					if(calendar.get(Calendar.HOUR_OF_DAY)==23){
 						calendar.set(Calendar.HOUR_OF_DAY, 0);
 					}
@@ -651,7 +690,7 @@ public class DateField implements Item{
 					}
 					populateFieldsForTime(calendar);
 				}
-				else if(timeGrid.getSelectedColumn()==2){
+				else if(timeGrid[1].getSelectedColumn()==2){
 					if(calendar.get(Calendar.MINUTE)==59){
 						calendar.set(Calendar.HOUR_OF_DAY, calendar.get(Calendar.HOUR_OF_DAY)+1);
 						calendar.set(Calendar.MINUTE, 0);
@@ -664,7 +703,7 @@ public class DateField implements Item{
 				break;
 			}
 			case Canvas.DOWN:{
-				if(timeGrid.getSelectedColumn()==1){
+				if(timeGrid[1].getSelectedColumn()==1){
 					if(calendar.get(Calendar.HOUR_OF_DAY)==0){
 						calendar.set(Calendar.HOUR_OF_DAY, 23);
 					}
@@ -673,7 +712,7 @@ public class DateField implements Item{
 					}
 					populateFieldsForTime(calendar);
 				}
-				else if(timeGrid.getSelectedColumn()==2){
+				else if(timeGrid[1].getSelectedColumn()==2){
 					if(calendar.get(Calendar.MINUTE)==0){
 						calendar.set(Calendar.HOUR_OF_DAY, calendar.get(Calendar.HOUR_OF_DAY)-1);
 						calendar.set(Calendar.MINUTE, 59);
@@ -686,9 +725,9 @@ public class DateField implements Item{
 				break;
 			}
 			case Canvas.FIRE:{
-				String hours=((TextItem)timeGrid.getItemAt(1, 1)).getText();
+				String hours=((TextItem)timeGrid[1].getItemAt(0, 1)).getText();
 				calendar.set(Calendar.HOUR_OF_DAY, Integer.parseInt(hours));
-				String mins=((TextItem)timeGrid.getItemAt(1, 2)).getText();
+				String mins=((TextItem)timeGrid[1].getItemAt(0, 2)).getText();
 				calendar.set(Calendar.MINUTE, Integer.parseInt(mins));
 				currentDateField.date=calendar.getTime();
 				if(currentDateField.timeField!=null){
@@ -748,7 +787,7 @@ public class DateField implements Item{
 					if(currentDateField.dateField!=null){
 						currentDateField.dateField.setText(getDateString(currentDateField.date));
 					}
-					GlobalControl.getControl().setCurrent(previousWindow);
+					GlobalControl.getControl().setDisplayedWindow(previousWindow);
 					previousWindow.repaint(previousWindow.getDisplayRect());
 				}
 				else{
@@ -825,7 +864,7 @@ public class DateField implements Item{
 						if(currentDateField.dateField!=null){
 							currentDateField.dateField.setText(getDateString(currentDateField.date));
 						}
-						GlobalControl.getControl().setCurrent(previousWindow);
+						GlobalControl.getControl().setDisplayedWindow(previousWindow);
 					}
 					else{
 						PopUpWindow noDPop=new PopUpWindow(LocaleManager.getTranslation("flemil.nodate"), true);
@@ -845,7 +884,7 @@ public class DateField implements Item{
 					}
 				}
 				else{
-					GlobalControl.getControl().setCurrent(previousWindow);
+					GlobalControl.getControl().setDisplayedWindow(previousWindow);
 				}
 			}
 		}
@@ -854,9 +893,9 @@ public class DateField implements Item{
 	private class TimeChangeMenuListener implements MenuCommandListener{
 		public void commandAction(MenuItem item) {
 			if(item==saveTimeItem){
-				String hours=((TextItem)timeGrid.getItemAt(1, 1)).getText();
+				String hours=((TextItem)timeGrid[1].getItemAt(0, 1)).getText();
 				calendar.set(Calendar.HOUR_OF_DAY, Integer.parseInt(hours));
-				String mins=((TextItem)timeGrid.getItemAt(1, 2)).getText();
+				String mins=((TextItem)timeGrid[1].getItemAt(0, 2)).getText();
 				calendar.set(Calendar.MINUTE, Integer.parseInt(mins));
 				currentDateField.date=calendar.getTime();
 				if(currentDateField.timeField!=null){
@@ -887,7 +926,7 @@ public class DateField implements Item{
 	}
 	static class UpRightKeyFireListener implements ImageItemListener{
 		public void eventFired(ImageItem source, byte eventType) {
-			timeGrid.setSelectedCell(1, 2);
+			timeGrid[1].setSelectedCell(0, 2);
 			((GlobalControl.MainCanvas)GlobalControl.getControl().
 					getMainDisplayCanvas()).keyPressed(
 							GlobalControl.getControl().getMainDisplayCanvas().getKeyCode(Canvas.UP));
@@ -895,7 +934,7 @@ public class DateField implements Item{
 	}
 	static class DownRightKeyFireListener implements ImageItemListener{
 		public void eventFired(ImageItem source, byte eventType) {
-			timeGrid.setSelectedCell(1, 2);
+			timeGrid[1].setSelectedCell(0, 2);
 			((GlobalControl.MainCanvas)GlobalControl.getControl().
 					getMainDisplayCanvas()).keyPressed(
 							GlobalControl.getControl().getMainDisplayCanvas().getKeyCode(Canvas.DOWN));
@@ -903,7 +942,7 @@ public class DateField implements Item{
 	}
 	static class UpLeftKeyFireListener implements ImageItemListener{
 		public void eventFired(ImageItem source, byte eventType) {
-			timeGrid.setSelectedCell(1, 1);
+			timeGrid[1].setSelectedCell(0, 1);
 			((GlobalControl.MainCanvas)GlobalControl.getControl().
 					getMainDisplayCanvas()).keyPressed(
 							GlobalControl.getControl().getMainDisplayCanvas().getKeyCode(Canvas.UP));
@@ -911,10 +950,28 @@ public class DateField implements Item{
 	}
 	static class DownLeftKeyFireListener implements ImageItemListener{
 		public void eventFired(ImageItem source, byte eventType) {
-			timeGrid.setSelectedCell(1, 1);
+			timeGrid[1].setSelectedCell(0, 1);
 			((GlobalControl.MainCanvas)GlobalControl.getControl().
 					getMainDisplayCanvas()).keyPressed(
 							GlobalControl.getControl().getMainDisplayCanvas().getKeyCode(Canvas.DOWN));
 		}
+	}
+
+	public void textChanged(TextItem item) {
+		if(!populating){
+			try{
+				int year=Integer.parseInt(((TextItem)yearGrid.getItemAt(0, 2)).getText());
+				Calendar cal=Calendar.getInstance();
+				cal.set(Calendar.YEAR, year);
+				cal.set(Calendar.MONTH, ((ComboBox)monthGrid.getItemAt(0, 2)).getSelectedIndex());
+				cal.set(Calendar.DATE, 1);
+				calendar=cal;
+				populateFieldsForDate(cal);
+			}
+			catch(NumberFormatException nfe){
+				populateFieldsForDate(calendar);
+			}
+		}
+		
 	}
 }

@@ -84,27 +84,9 @@ public class Rectangle
      */
     private boolean intersectsWith(Rectangle rect)
     {
-        /*For this all we need to do is check that that a single point of the
-        * rectangle is contained with a gap of at least one pixel. If it is then
-        * there must be an intersection between the two
-        */
-        if(!(this.contains(rect.x, rect.y,0)||
-                this.contains(rect.x, rect.y+rect.height,0)||
-                this.contains(rect.x+rect.width, rect.y+rect.height,0)||
-                this.contains(rect.x+rect.width, rect.y,0)))
-        {
-            if(!(rect.contains(this.x, this.y,0)||
-                rect.contains(this.x, this.y+this.height,0)||
-                rect.contains(this.x+this.width, this.y+this.height,0)||
-                rect.contains(this.x+this.width, this.y,0)))
-            {
-            	if(!(this.x>rect.x && this.x+this.width<rect.x+rect.width &&
-            			this.y<rect.y && this.y+this.height>rect.y+rect.height))
-            	{
-            		return (this.x<rect.x && this.x+this.width>rect.x+rect.width &&
-            				this.y>rect.y && this.y+this.height<rect.y+rect.height);
-            	}
-            }
+        if(Math.max(this.x, rect.x)>Math.min((this.x+this.width), (rect.x+rect.width))||
+        		Math.max(this.y, rect.y)>Math.min((this.y+this.height), (rect.y+rect.height))){
+        	return false;
         }
         return true;
     }
@@ -123,82 +105,13 @@ public class Rectangle
         {
             return null;
         }
-        //if it intersects then we check for the set of points that intersect
-        //and calculate the intersection rect for return
-        Rectangle intersect=new Rectangle();
-        //boolean to indicate whether intersection was found in first parse
-        boolean set=false;
-        //First we check for the xwise intersection
-        if(this.contains(rect.x, rect.y, 0)||
-                this.contains(rect.x, rect.y+rect.height, 0))
-        {
-            set=true;
-            intersect.x=rect.x;
-            //if the other x end is also conatined we assign width else
-            //we assin the deduction
-            intersect.width=(this.x+this.width>rect.x+rect.width)?rect.width:
-                (this.x+this.width)-intersect.x;
-        }
-        else if(this.contains(rect.x+rect.width, rect.y, 0)||
-                this.contains(rect.x+rect.width, rect.y+rect.height, 0))
-        {
-            set=true;
-            intersect.x=this.x;
-            //since rects leftmost is not contained we simply calculate and assign the difference
-            intersect.width=rect.x+rect.width-this.x;
-        }
-
-        //then check for the ywise intersection
-        if(this.contains(rect.x, rect.y, 0)||
-                this.contains(rect.x+rect.width, rect.y, 0))
-        {
-            set=true;
-            intersect.y=rect.y;
-            //if the other y end is also conatined we assign height to rects height else
-            //we assin the deduction
-            intersect.height=(this.y+this.height>rect.y+rect.height)?rect.height:
-                (this.y+this.height)-rect.y;
-        }
-        else if(this.contains(rect.x, rect.y+rect.height, 0)||
-                this.contains(rect.x+rect.width, rect.y+rect.height, 0))
-        {
-            set=true;
-            intersect.y=this.y;
-            //since rects topmost is not contained we simply calculate and assign the difference
-            intersect.height=rect.y+rect.height-this.y;
-        }
-        //if it was not found we do a counter check on the other rect flemilar to this one
-        if(set==false)
-        {
-        	if(this.x>rect.x && this.x+this.width<rect.x+rect.width &&
-        			this.y<rect.y && this.y+this.height>rect.y+rect.height)
-        	{
-        		set=true;
-        		intersect.x=this.x;
-        		intersect.y=rect.y;
-        		intersect.width=this.width;
-        		intersect.height=rect.height;
-        		return intersect;
-        	}
-        	else if(this.x<rect.x && this.x+this.width>rect.x+rect.width &&
-    				this.y>rect.y && this.y+this.height<rect.y+rect.height)
-        	{
-        		set=true;
-        		intersect.x=rect.x;
-        		intersect.y=this.y;
-        		intersect.width=rect.width;
-        		intersect.height=this.height;
-        		return intersect;
-        	}
-            return rect.calculateIntersection(this);
-        }
-        //if intersect has any domension with zero magnitude, then we rutrn null;
-        if(intersect.width==0 || intersect.height==0)
-        {
-            return null;
-        }
-        //else we return the intersect rect
-        return intersect;
+    	
+    	return new Rectangle((Math.max(this.x, rect.x)), 
+    			(Math.max(this.y, rect.y)), 
+    			(Math.min((rect.x+rect.width), 
+    			(this.x+this.width)))-(Math.max(this.x, rect.x)), 
+    			(Math.min((this.y+this.height), 
+    			(rect.y+rect.height)))-(Math.max(this.y, rect.y)));
     }
     /**
      * Checks whether the passed in Rectangle is equal to this Rectangle. for the  

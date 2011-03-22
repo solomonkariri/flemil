@@ -19,6 +19,7 @@
 package org.flemil.control;
 
 
+import java.util.Calendar;
 import java.util.Vector;
 
 import javax.microedition.lcdui.Canvas;
@@ -69,12 +70,16 @@ public class GlobalControl
     private ScreenWindow currentWindow;
     //Image for double buffering
     private Image bufferImg;
+    
+    private static int[] softKeys={-6,-7};
+    
+    private boolean editingText;
     /**
      * The ImageFactory instance that is used throughout the whole of the application.
      * You should avoid initializing the ImageFactory class every time you want to use 
      * it and instead, call this method to get an ImageFactory to work with
      */
-    public static ImageFactory imageFactory=new ImageFactory();
+    private static ImageFactory imageFactory=new ImageFactory();
     //The rectangle for the available display area
     private static Rectangle displayArea=new Rectangle();
     //background image for menu items
@@ -89,6 +94,8 @@ public class GlobalControl
     private static Image buttonGBround;
     private static Image buttonEdgeBGround;
     private static Image menuPopImage;
+    
+    private boolean showTime;
     
     public Image getMenuPopImage() {
 		return menuPopImage;
@@ -128,6 +135,8 @@ public class GlobalControl
     private boolean fading;
 	private boolean refreshingStyle;
 	private boolean settingLayout;
+	private boolean inited;
+
     /**
      * Creates a new GlobalControl for the given Midlet having the given default
      * style
@@ -148,6 +157,7 @@ public class GlobalControl
         displayArea.height=mainCanvas.getHeight();
         initBGrounds();
         initControlsBGrounds();
+        inited=true;
     }
     /**
      * Creates a new GlobalControl for the given MIDlet having a default style
@@ -196,6 +206,9 @@ public class GlobalControl
      */
     public static void init(MIDlet midlet,Style style)
     {
+    	if(System.getProperty("com.mot.carrier.URL")!=null){
+    		softKeys=new int[]{-21,-22};
+    	}
         control=new GlobalControl(midlet, style);
     }
     /**
@@ -276,7 +289,8 @@ public class GlobalControl
     {
     	int wid=10;
         //Initialize the exit menu bar image
-        menuBarBGround=imageFactory.createTextureImage(wid,
+    	byte[] tmpStore=null;
+        tmpStore=imageFactory.createTextureImageBytes(wid,
                 ((Font)globalStyle.getProperty(Style.MENU_BAR_FONT)).getHeight()+2, 
                 ((Integer)globalStyle.getProperty(Style.MENU_BAR_BACKGROUND)).
                     intValue(),
@@ -287,7 +301,8 @@ public class GlobalControl
                     ((Byte)globalStyle.getProperty(Style.MENU_BAR_LIGHTING)).byteValue(),
                     ((Boolean)globalStyle.getProperty(Style.MENU_BAR_SHADING)).booleanValue(),
                     0);
-        titleBGround=imageFactory.createTextureImage(wid,
+        menuBarBGround=Image.createImage(tmpStore, 0, tmpStore.length);
+        tmpStore=imageFactory.createTextureImageBytes(wid,
                 ((Font)globalStyle.getProperty(Style.WINDOW_TITLE_FONT)).getHeight()+2, 
                 ((Integer)globalStyle.getProperty(Style.TITLE_BACKGROUND)).
                     intValue(), 
@@ -298,7 +313,8 @@ public class GlobalControl
                     ((Byte)globalStyle.getProperty(Style.TITLE_BAR_LIGHTING)).byteValue(),
                     ((Boolean)globalStyle.getProperty(Style.TITLE_BAR_SHADING)).booleanValue(),
                     0);
-        menuItemBGround=GlobalControl.getImageFactory().createTextureImage(wid,
+        titleBGround=Image.createImage(tmpStore, 0, tmpStore.length);
+        tmpStore=GlobalControl.getImageFactory().createTextureImageBytes(wid,
                 ((Font)globalStyle.getProperty(Style.MENU_ITEM_FONT)).getHeight()+2,
                 ((Integer)globalStyle.getProperty(Style.MENU_HIGHLIGHT_BACKGROUND)).
                     intValue(), 
@@ -309,7 +325,8 @@ public class GlobalControl
                     ((Byte)globalStyle.getProperty(Style.MENU_ITEM_LIGHTING)).byteValue(),
                     ((Boolean)globalStyle.getProperty(Style.MENU_ITEM_SHADING)).booleanValue(),
                     0);
-        titleEdgeBGround=imageFactory.createTextureImage(
+        menuItemBGround=Image.createImage(tmpStore, 0, tmpStore.length);
+        tmpStore=imageFactory.createTextureImageBytes(
         		((Integer)globalStyle.getProperty(Style.CURVES_RADIUS)).intValue()*2,
                 ((Font)globalStyle.getProperty(Style.WINDOW_TITLE_FONT)).getHeight()+2, 
                 ((Integer)globalStyle.getProperty(Style.TITLE_BACKGROUND)).
@@ -321,7 +338,8 @@ public class GlobalControl
                     ((Byte)globalStyle.getProperty(Style.TITLE_BAR_LIGHTING)).byteValue(),
                     ((Boolean)globalStyle.getProperty(Style.TITLE_BAR_SHADING)).booleanValue(),
                     ((Integer)globalStyle.getProperty(Style.CURVES_RADIUS)).intValue());
-        menuItemEdgeBGround=GlobalControl.getImageFactory().createTextureImage(
+        titleEdgeBGround=Image.createImage(tmpStore, 0, tmpStore.length);
+        tmpStore=GlobalControl.getImageFactory().createTextureImageBytes(
         		((Integer)globalStyle.getProperty(Style.CURVES_RADIUS)).intValue()*2,
                 ((Font)globalStyle.getProperty(Style.MENU_ITEM_FONT)).getHeight()+2,
                 ((Integer)globalStyle.getProperty(Style.MENU_HIGHLIGHT_BACKGROUND)).
@@ -333,10 +351,12 @@ public class GlobalControl
                     ((Byte)globalStyle.getProperty(Style.MENU_ITEM_LIGHTING)).byteValue(),
                     ((Boolean)globalStyle.getProperty(Style.MENU_ITEM_SHADING)).booleanValue(),
                     ((Integer)globalStyle.getProperty(Style.CURVES_RADIUS)).intValue());
+        menuItemEdgeBGround=Image.createImage(tmpStore, 0, tmpStore.length);
     }
-    private synchronized void initControlsBGrounds()
+    private void initControlsBGrounds()
     {
-    	tabBGround=GlobalControl.getImageFactory().createTextureImage(20,
+    	byte[] tmpStore=null;
+    	tmpStore=GlobalControl.getImageFactory().createTextureImageBytes(20,
     			((Font)globalStyle.getProperty(Style.TAB_FONT)).getHeight()+4,
                 ((Integer)globalStyle.getProperty(Style.TAB_FOCUS_BACKGROUND)).
                     intValue(), 
@@ -347,7 +367,8 @@ public class GlobalControl
                     ((Byte)globalStyle.getProperty(Style.TAB_LIGHTING)).byteValue(),
                     ((Boolean)globalStyle.getProperty(Style.TAB_SHADING)).booleanValue(),
                     0);
-    	tabEdgeBGround=GlobalControl.getImageFactory().createTextureImage(
+    	tabBGround=Image.createImage(tmpStore, 0, tmpStore.length);
+    	tmpStore=GlobalControl.getImageFactory().createTextureImageBytes(
     			((Integer)globalStyle.getProperty(Style.TAB_CURVE_RADIUS)).intValue()*2,
     			((Font)globalStyle.getProperty(Style.TAB_FONT)).getHeight()+4,
                 ((Integer)globalStyle.getProperty(Style.TAB_FOCUS_BACKGROUND)).
@@ -359,7 +380,8 @@ public class GlobalControl
                     ((Byte)globalStyle.getProperty(Style.TAB_LIGHTING)).byteValue(),
                     ((Boolean)globalStyle.getProperty(Style.TAB_SHADING)).booleanValue(),
                     ((Integer)globalStyle.getProperty(Style.TAB_CURVE_RADIUS)).intValue());
-    	buttonGBround=GlobalControl.getImageFactory().createTextureImage(20,
+    	tabEdgeBGround=Image.createImage(tmpStore, 0, tmpStore.length);
+    	tmpStore=GlobalControl.getImageFactory().createTextureImageBytes(20,
     			((Font)globalStyle.getProperty(Style.BUTTON_FONT)).getHeight()+2,
                 ((Integer)globalStyle.getProperty(Style.BUTTON_FOCUS_BACKGROUND)).
                     intValue(), 
@@ -370,7 +392,8 @@ public class GlobalControl
                     ((Byte)globalStyle.getProperty(Style.BUTTON_LIGHTING)).byteValue(),
                     ((Boolean)globalStyle.getProperty(Style.BUTTON_SHADING)).booleanValue(),
                     0);
-    	buttonEdgeBGround=GlobalControl.getImageFactory().createTextureImage(
+    	buttonGBround=Image.createImage(tmpStore, 0, tmpStore.length);
+    	tmpStore=GlobalControl.getImageFactory().createTextureImageBytes(
     			((Integer)globalStyle.getProperty(Style.BUTTON_CURVE_RADIUS)).intValue()*2,
     			((Font)globalStyle.getProperty(Style.BUTTON_FONT)).getHeight()+2,
                 ((Integer)globalStyle.getProperty(Style.BUTTON_FOCUS_BACKGROUND)).
@@ -382,6 +405,7 @@ public class GlobalControl
                     ((Byte)globalStyle.getProperty(Style.BUTTON_LIGHTING)).byteValue(),
                     ((Boolean)globalStyle.getProperty(Style.BUTTON_SHADING)).booleanValue(),
                     ((Integer)globalStyle.getProperty(Style.BUTTON_CURVE_RADIUS)).intValue());
+    	buttonEdgeBGround=Image.createImage(tmpStore, 0, tmpStore.length);
     	int imgWidth=((Font)globalStyle.getProperty(
                 Style.MENU_ITEM_FONT)).getHeight()/2;
     	try {
@@ -389,12 +413,12 @@ public class GlobalControl
 			        ((Font)globalStyle.getProperty(
 			                Style.MENU_ITEM_FONT)).getHeight(), Sprite.TRANS_NONE);
 		} catch (Exception e) {
-			e.printStackTrace();
+//			e.printStackTrace();
 		}
     }
-    private synchronized void initThemeForeground()
+    private void initThemeForeground()
     {
-    	themeForeground=GlobalControl.getImageFactory().createTextureImage(5,
+    	byte[] tmpStore=GlobalControl.getImageFactory().createTextureImageBytes(5,
                 displayArea.height,
                 ((Integer)GlobalControl.getControl().getStyle().getProperty(Style.THEME_FOREGROUND)).
                     intValue(), 
@@ -405,7 +429,8 @@ public class GlobalControl
                     ((Byte)GlobalControl.getControl().getStyle().getProperty(Style.THEME_LIGHTING)).byteValue(),
                     ((Boolean)GlobalControl.getControl().getStyle().getProperty(Style.THEME_SHADING)).booleanValue(),
                     0);
-    	themeEdgeForeground=GlobalControl.getImageFactory().createTextureImage(
+    	themeForeground=Image.createImage(tmpStore, 0, tmpStore.length);
+    	tmpStore=GlobalControl.getImageFactory().createTextureImageBytes(
     			((Integer)globalStyle.getProperty(Style.CURVES_RADIUS)).intValue()*2,
                 displayArea.height,
                 ((Integer)GlobalControl.getControl().getStyle().getProperty(Style.THEME_FOREGROUND)).
@@ -417,6 +442,7 @@ public class GlobalControl
                     ((Byte)GlobalControl.getControl().getStyle().getProperty(Style.THEME_LIGHTING)).byteValue(),
                     ((Boolean)GlobalControl.getControl().getStyle().getProperty(Style.THEME_SHADING)).booleanValue(),
                     ((Integer)globalStyle.getProperty(Style.CURVES_RADIUS)).intValue());
+    	themeEdgeForeground=Image.createImage(tmpStore, 0, tmpStore.length);
     }
     
     public Image getButtonGBround() {
@@ -442,7 +468,7 @@ public class GlobalControl
      *  @see #getStyle()
      * @param style the global Style for this application
      */
-    public synchronized void setStyle(Style style)
+    public void setStyle(Style style)
     {
         globalStyle=style;
         refreshStyle();
@@ -513,9 +539,9 @@ public class GlobalControl
     {
         return mainCanvas.getHeight();
     }
-    private synchronized void paint(Graphics g)
+    private void paint(Graphics g)
     {
-    	Rectangle currentClip=new Rectangle();
+		Rectangle currentClip=new Rectangle();
     	if(layout==LANDSCAPE_LAYOUT)
     	{
     		currentClip.x=g.getClipY();
@@ -561,10 +587,22 @@ public class GlobalControl
     					currentClip.x, currentClip.y, Graphics.TOP|Graphics.LEFT);
     		}
     	}catch(IllegalArgumentException iae){
-    		iae.printStackTrace();
+//    		iae.printStackTrace();
     	}
     	//Clean up memory after
     	Runtime.getRuntime().gc();
+    }
+    public void setDisplayedWindow(ScreenWindow window){
+    	//Send a focus lost signal to the current component if any
+        if(currentWindow!=null)
+        {
+            currentWindow.focusLost();
+            //Clean up any previously used memory
+            Runtime.getRuntime().gc();
+        }
+        currentWindow=window;
+    	currentWindow.focusGained();
+    	repaint(displayArea);
     }
     /**
      * Sets the ScreenWindow that is being currently displayed to the user.
@@ -572,29 +610,25 @@ public class GlobalControl
      */
     public void setCurrent(ScreenWindow window)
     {
-        setCurrent(window, currentWindow);
-    }
-    private void setCurrent(ScreenWindow window,ScreenWindow next)
-    {
-        //Send a focus lost signal to the current component if any
+        //Initialize width and height for display
+        displayArea.width=layout==GlobalControl.LANDSCAPE_LAYOUT?mainCanvas.getHeight():mainCanvas.getWidth();
+        displayArea.height=layout==GlobalControl.LANDSCAPE_LAYOUT?mainCanvas.getWidth():mainCanvas.getHeight();
+        //Initialize the off screen image
+        bufferImg=Image.createImage(displayArea.width, displayArea.height);
+        setLayout(layout);
+        //Set the default layout
+        window.setDisplayRect(displayArea);
+      //Send a focus lost signal to the current component if any
         if(currentWindow!=null)
         {
             currentWindow.focusLost();
             //Clean up any previously used memory
             Runtime.getRuntime().gc();
         }
-        display.setCurrent(mainCanvas);
-        mainCanvas.setFullScreenMode(true);
-        //Initialize width and height for display
-        displayArea.width=layout==GlobalControl.LANDSCAPE_LAYOUT?mainCanvas.getHeight():mainCanvas.getWidth();
-        displayArea.height=layout==GlobalControl.LANDSCAPE_LAYOUT?mainCanvas.getWidth():mainCanvas.getHeight();
-        //Initialize the off screen image
-        bufferImg=Image.createImage(displayArea.width, displayArea.height);
-        //Set the default layout
-        currentWindow=window;
-        if(!currentWindow.getDisplayRect().equals(displayArea)){
-        	setLayout(layout);
+        if(display.getCurrent()!=mainCanvas){
+        	display.setCurrent(mainCanvas);
         }
+        currentWindow=window;
         //Send a focus alert to component to initiate auto scrolling
         currentWindow.focusGained();
     }
@@ -609,18 +643,26 @@ public class GlobalControl
     /**
      * Refreshes or reloads the currently displayed style
      */
-    private synchronized void refreshStyle()
+    private void refreshStyle()
     {
-    	refreshingStyle=true;
-    	initBGrounds();
-    	initControlsBGrounds();
-    	initThemeForeground();
-    	setFading(fading);
-    	if(currentWindow!=null)
+    	boolean initalFocus=currentWindow!=null?currentWindow.isFocusible():false;
+    	if(currentWindow!=null && currentWindow.isFocussed())
     	{
+    		currentWindow.focusLost();
+    	}
+    	refreshingStyle=true;
+    	synchronized (this) {
+    		initBGrounds();
+    		initControlsBGrounds();
+        	setLayout(layout);
+		}
+    	if(currentWindow!=null && initalFocus)
+    	{
+    		currentWindow.focusGained();
+    	}
+    	if(currentWindow!=null){
     		currentWindow.setDisplayRect(displayArea);
     	}
-    	setLayout(layout);
     	refreshingStyle=false;
     	repaint(displayArea);
     }
@@ -661,13 +703,13 @@ public class GlobalControl
                     currentWindow.keyPressedEvent(
                             mainCanvas.getKeyCode(Canvas.LEFT));                        
                 }
-                else if(keyCode==-7)
+                else if(keyCode==softKeys[1])
                 {
-                	currentWindow.keyPressedEvent(-6);
+                	currentWindow.keyPressedEvent(softKeys[0]);
                 }
-                else if(keyCode==-6)
+                else if(keyCode==softKeys[0])
                 {
-                	currentWindow.keyPressedEvent(-7);
+                	currentWindow.keyPressedEvent(softKeys[1]);
                 }
                 else
                 {
@@ -773,38 +815,33 @@ public class GlobalControl
             switched=true;
         }
 		setFading(fading);
-		if(currentWindow!=null)
-        {
-            currentWindow.focusLost();
-        }
+		initThemeForeground();
         if(currentWindow!=null)
         {
-        	currentWindow.focusLost();
-            //Update the current windows display rect
-            Rectangle windowRect=new Rectangle();
-            windowRect.x=displayArea.x;
-            windowRect.y=displayArea.y;
-            windowRect.width=displayArea.width;
-            windowRect.height=displayArea.height;
-            currentWindow.setDisplayRect(windowRect);
+        	if(!displayArea.equals(currentWindow.getDisplayRect()) ||
+        			switched){
+        		//Update the current windows display rect
+                Rectangle windowRect=new Rectangle();
+                windowRect.x=displayArea.x;
+                windowRect.y=displayArea.y;
+                windowRect.width=displayArea.width;
+                windowRect.height=displayArea.height;
+                currentWindow.setDisplayRect(windowRect);
+        	}
         }
-        initThemeForeground();
         //Clean up any previously used memory
         Runtime.getRuntime().gc();
         settingLayout=false;
-        if(currentWindow!=null){
-        	currentWindow.focusGained();
-        }
         if(switched){
         	new Thread(new Runnable() {
 				public void run() {
-					int size=layoutSwitchListeners.size();
-					for(int i=0;i<size;i++){
+					for(int i=0;i<layoutSwitchListeners.size();i++){
 						((LayoutSwitchListener)layoutSwitchListeners.elementAt(i)).layoutChanged();
 					}
 				}
 			}).start();
         }
+        repaint(displayArea);
     }
     /**
      * Returns the Display instance being currently used by the application.
@@ -876,7 +913,7 @@ public class GlobalControl
 		this.fading = fading;
 		if(this.fading)
 		{
-			fadeImage=GlobalControl.getImageFactory().createTextureImage(10,displayArea.height, 
+			byte[] tmpStore=GlobalControl.getImageFactory().createTextureImageBytes(10,displayArea.height, 
 					((Integer)globalStyle.getProperty(Style.FADE_COLOR)).
                     intValue(),
                 ((Integer)globalStyle.getProperty(Style.FADE_OPACITY)).
@@ -884,6 +921,7 @@ public class GlobalControl
                 ((Integer)globalStyle.getProperty(Style.FADE_OPACITY)).
                     intValue(),ImageFactory.LIGHT_FRONT,
                     false,4);
+			fadeImage=Image.createImage(tmpStore, 0, tmpStore.length);
 		}
 		else
 		{
@@ -901,14 +939,15 @@ public class GlobalControl
 	
 	private void sizeChanged(int newWidth,int newHeight){
 		if(layout==GlobalControl.LANDSCAPE_LAYOUT){
+			if(displayArea.width==newHeight && displayArea.height==newWidth)return;
     		displayArea=new Rectangle(0, 0, newHeight, newWidth);
     	}
     	else{
+    		if(displayArea.width==newWidth && displayArea.height==newHeight)return;
     		displayArea=new Rectangle(0, 0, newWidth, newHeight);
     	}
     	bufferImg=Image.createImage(displayArea.width, displayArea.height);
     	refreshLayout();
-    	mainCanvas.setFullScreenMode(true);
 	}
 	public class MainCanvas extends Canvas
     {
@@ -954,10 +993,14 @@ public class GlobalControl
         {
             pointerDraggedEvent(x, y);
         }
-        public void sizeChanged(int newWidth,int newHeight)
+        public void sizeChanged(final int newWidth,final int newHeight)
         {
-        	if(mainCanvas.equals(display.getCurrent()))return;
-        	GlobalControl.this.sizeChanged(newWidth, newHeight);
+        	if(!inited || editingText)return;
+        	new Thread(new Runnable() {
+				public void run() {
+					GlobalControl.this.sizeChanged(newWidth, newHeight);
+				}
+			}).start();
         }
     }
 	public void refreshLayout() {
@@ -973,7 +1016,68 @@ public class GlobalControl
 		layoutSwitchListeners.removeElement(listener);
 	}
 	
+	public void setEditingText(boolean editingText) {
+		this.editingText = editingText;
+	}
+	public boolean isEditingText() {
+		return editingText;
+	}
+	public void setShowTime(boolean showTime) {
+		this.showTime = showTime;
+		if(showTime){
+			new Thread(new TimeUpdater()).start();
+		}
+	}
+	public boolean isShowTime() {
+		return showTime;
+	}
+	public static int[] getSoftKeys() {
+		return softKeys;
+	}
 	public interface LayoutSwitchListener{
 		public void layoutChanged();
+	}
+	private static boolean updatinTime;
+	class TimeUpdater implements Runnable{
+		public void run() {
+			synchronized (this) {
+				if(updatinTime)return;
+				updatinTime=true;
+				this.notifyAll();
+			}
+			Calendar cal=Calendar.getInstance();
+			StringBuffer timeString=new StringBuffer();
+			timeString.append(cal.get(Calendar.HOUR)==0?"12":""+cal.get(Calendar.HOUR));
+			timeString.append(":");
+			timeString.append(cal.get(Calendar.MINUTE)<10?("0"+cal.get(Calendar.MINUTE)):
+				(""+cal.get(Calendar.MINUTE)));
+			cal=null;
+			String lastString=timeString.toString();
+			timeString=null;
+			while(updatinTime && showTime){
+				try {
+					Thread.sleep(3000);
+				} catch (InterruptedException e) {
+//					e.printStackTrace();
+				}
+				if(currentWindow!=null && !currentWindow.isFullScreenOn()){
+					cal=Calendar.getInstance();
+					timeString=new StringBuffer();
+    				timeString.append(cal.get(Calendar.HOUR)==0?"12":""+cal.get(Calendar.HOUR));
+    				timeString.append(":");
+    				timeString.append(cal.get(Calendar.MINUTE)<10?("0"+cal.get(Calendar.MINUTE)):
+    					(""+cal.get(Calendar.MINUTE)));
+					if(!lastString.equals(timeString.toString())){
+						lastString=timeString.toString();
+						timeString=null;
+						repaint(currentWindow.getMenuBarRect());
+					}
+				}
+			}
+			synchronized (this) {
+				updatinTime=false;
+				this.notifyAll();
+			}
+		}
 	}
 }

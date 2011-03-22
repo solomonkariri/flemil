@@ -67,39 +67,42 @@ public class ScrollBar implements Item
 		displayRect=new Rectangle();
 	}
 	
-	private synchronized void initItemSizes()
+	private void initItemSizes()
 	{
-		if(orientation==ScrollBar.VERTICAL_ORIENTATION)
-		{
-			knobSize=(availableSize*displayRect.height)/requiredSize;
-			if(knobSize<3)
+		synchronized (this) {
+			if(orientation==ScrollBar.VERTICAL_ORIENTATION)
 			{
-				knobSize=3;
+				knobSize=(availableSize*displayRect.height)/requiredSize;
+				if(knobSize<3)
+				{
+					knobSize=3;
+				}
+				else if(knobSize>displayRect.height)
+				{
+					knobSize=displayRect.height;
+				}
 			}
-			else if(knobSize>displayRect.height)
+			else
 			{
-				knobSize=displayRect.height;
+				knobSize=(availableSize*displayRect.width)/requiredSize;
+				if(knobSize<3)
+				{
+					knobSize=3;
+				}
+				else if(knobSize>displayRect.width)
+				{
+					knobSize=displayRect.width;
+				}
 			}
+			requiredSize+=(knobSize*requiredSize)/availableSize;
+			byte[] tmpStore=GlobalControl.getImageFactory().createTextureImageBytes(
+					knobSize, orientation==ScrollBar.VERTICAL_ORIENTATION?
+							displayRect.width:displayRect.height, 
+					((Integer)GlobalControl.getControl().getStyle().
+							getProperty(Style.SCROLLBAR_FOREGROUND)).intValue(), 
+							255, 255, ImageFactory.LIGHT_BEHIND, true,0);
+			fgImage=Image.createImage(tmpStore, 0, tmpStore.length);
 		}
-		else
-		{
-			knobSize=(availableSize*displayRect.width)/requiredSize;
-			if(knobSize<3)
-			{
-				knobSize=3;
-			}
-			else if(knobSize>displayRect.width)
-			{
-				knobSize=displayRect.width;
-			}
-		}
-		requiredSize+=(knobSize*requiredSize)/availableSize;
-		fgImage=GlobalControl.getImageFactory().createTextureImage(
-				knobSize, orientation==ScrollBar.VERTICAL_ORIENTATION?
-						displayRect.width:displayRect.height, 
-				((Integer)GlobalControl.getControl().getStyle().
-						getProperty(Style.SCROLLBAR_FOREGROUND)).intValue(), 
-						255, 255, ImageFactory.LIGHT_BEHIND, true,0);
 	}
 	/**
 	 * Returns the current point of the scroll bar in which is a value between

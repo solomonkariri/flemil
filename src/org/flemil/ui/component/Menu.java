@@ -1,5 +1,6 @@
 package org.flemil.ui.component;
 
+import java.util.Calendar;
 import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.Vector; 
@@ -132,106 +133,119 @@ public class Menu implements Item
      */
     private void organizeItems()
     {
-    	//this method checks the parent to see if its a window
-    	//if the parent is a window, then it sets the left item, else it leaves the items intact
-    	if(parent!=null && parent instanceof Window)
-    	{
-    		//first we  move the left and right items back to the list
-    		if(rightItem!=null && !entries.contains(rightItem))
-    		{
-    			//we set the alignment for the sub menu back to default
-    			if(rightItem.getType()==MenuItem.TYPE_POPUP_ITEM)
-    			{
-    				switch (this.alignment) {
-					case Menu.ALIGN_LEFT:
-						((Menu)mappings.get(rightItem)).setAlignment(Menu.ALIGN_RIGHT);		
-						break;
-					case Menu.ALIGN_RIGHT:
-						((Menu)mappings.get(rightItem)).setAlignment(Menu.ALIGN_LEFT);		
-						break;
-					}
-    			}
-    			entries.addElement(rightItem);
-    			rightItem=null;
-    		}
-    		if(leftItem!=null && !entries.contains(leftItem))
-    		{
-    			entries.addElement(leftItem);
-    			leftItem=null;
-    		}
-    		//if the menu is displaying then we add the select and cancel options and make them the right
-    		//and left items respectively
-    		if(entries.size()<3)
-    		{
-    			if(entries.size()==2)
-    			{
-    				//if both items are popup items then they will have to go the right both of them
-        			if(((MenuItem)entries.elementAt(1)).getType()==MenuItem.TYPE_POPUP_ITEM &&
-        					((MenuItem)entries.elementAt(0)).getType()==MenuItem.TYPE_POPUP_ITEM)
+    	synchronized (this) {
+    		//this method checks the parent to see if its a window
+        	//if the parent is a window, then it sets the left item, else it leaves the items intact
+        	if(parent!=null && parent instanceof Window)
+        	{
+        		//first we  move the left and right items back to the list
+        		if(rightItem!=null && !entries.contains(rightItem))
+        		{
+        			//we set the alignment for the sub menu back to default
+        			if(rightItem.getType()==MenuItem.TYPE_POPUP_ITEM)
         			{
-        				leftItem=null;
-        				rightItem=null;
+        				switch (this.alignment) {
+    					case Menu.ALIGN_LEFT:
+    						((Menu)mappings.get(rightItem)).setAlignment(Menu.ALIGN_RIGHT);		
+    						break;
+    					case Menu.ALIGN_RIGHT:
+    						((Menu)mappings.get(rightItem)).setAlignment(Menu.ALIGN_LEFT);		
+    						break;
+    					}
         			}
-        			//else we put the pop up item to the right of the menu and give it the fake main menu property
-        			else
+        			entries.addElement(rightItem);
+        			rightItem=null;
+        		}
+        		if(leftItem!=null && !entries.contains(leftItem))
+        		{
+        			entries.addElement(leftItem);
+        			leftItem=null;
+        		}
+        		//if the menu is displaying then we add the select and cancel options and make them the right
+        		//and left items respectively
+        		if(entries.size()<3)
+        		{
+        			if(entries.size()==2)
         			{
-        				if(GlobalControl.getControl().getLayout()==GlobalControl.PORTRAIT_LAYOUT)
-        				{
-        					if(((MenuItem)entries.elementAt(1)).getType()==MenuItem.TYPE_POPUP_ITEM)
+        				//if both items are popup items then they will have to go the right both of them
+            			if(((MenuItem)entries.elementAt(1)).getType()==MenuItem.TYPE_POPUP_ITEM &&
+            					((MenuItem)entries.elementAt(0)).getType()==MenuItem.TYPE_POPUP_ITEM)
+            			{
+            				leftItem=null;
+            				rightItem=null;
+            			}
+            			//else we put the pop up item to the right of the menu and give it the fake main menu property
+            			else
+            			{
+            				if(GlobalControl.getControl().getLayout()==GlobalControl.PORTRAIT_LAYOUT)
             				{
-            					leftItem=(MenuItem)entries.elementAt(0);
-            					rightItem=(MenuItem)entries.elementAt(1);
-            					entries.removeElement(rightItem);
-            					entries.removeElement(leftItem);
-            					((Menu)mappings.get(rightItem)).setAlignment(this.alignment);
+            					if(((MenuItem)entries.elementAt(1)).getType()==MenuItem.TYPE_POPUP_ITEM)
+                				{
+                					leftItem=(MenuItem)entries.elementAt(0);
+                					rightItem=(MenuItem)entries.elementAt(1);
+                					entries.removeElement(rightItem);
+                					entries.removeElement(leftItem);
+                					((Menu)mappings.get(rightItem)).setAlignment(this.alignment);
+                				}
+                				else if(((MenuItem)entries.elementAt(0)).getType()==MenuItem.TYPE_POPUP_ITEM)
+                				{
+                					leftItem=(MenuItem)entries.elementAt(1);
+                					rightItem=(MenuItem)entries.elementAt(0);
+                					entries.removeElement(rightItem);
+                					entries.removeElement(leftItem);
+                				}
+                				else
+                				{
+                					leftItem=(MenuItem)entries.elementAt(1);
+                					rightItem=(MenuItem)entries.elementAt(0);
+                					entries.removeElement(rightItem);
+                					entries.removeElement(leftItem);
+                				}
             				}
-            				else if(((MenuItem)entries.elementAt(0)).getType()==MenuItem.TYPE_POPUP_ITEM)
-            				{
-            					leftItem=(MenuItem)entries.elementAt(1);
-            					rightItem=(MenuItem)entries.elementAt(0);
-            					entries.removeElement(rightItem);
-            					entries.removeElement(leftItem);
-            				}
-            				else
-            				{
-            					leftItem=(MenuItem)entries.elementAt(1);
-            					rightItem=(MenuItem)entries.elementAt(0);
-            					entries.removeElement(rightItem);
-            					entries.removeElement(leftItem);
-            				}
-        				}
+            			}
         			}
-    			}
-    			else if(entries.size()==1)
-    			{
-    				rightItem=(MenuItem)entries.elementAt(0);
-					entries.removeElement(rightItem);
-					currentItem=rightItem;
-    			}
-    		}
-    		//if there are more than two items then we set the topmost non popup item as the left item
-    		else
-    		{
-    			if(GlobalControl.getControl().getLayout()==GlobalControl.PORTRAIT_LAYOUT)
-    			{
-    				for(int i=entries.size()-1;i>=0;i--)
+        			else if(entries.size()==1)
         			{
-        				if(((MenuItem)entries.elementAt(i)).getType()!=MenuItem.TYPE_POPUP_ITEM)
-        				{
-        					//we set it as the left and remove it from the items list
-        					leftItem=(MenuItem)entries.elementAt(i);
-        					entries.removeElement(leftItem);
-        					break;
-        				}
+        				rightItem=(MenuItem)entries.elementAt(0);
+    					entries.removeElement(rightItem);
+    					currentItem=rightItem;
         			}
-    			}
-    			rightItem=null;
-    		}
-    	}
+        		}
+        		//if there are more than two items then we set the topmost non popup item as the left item
+        		else
+        		{
+        			if(GlobalControl.getControl().getLayout()==GlobalControl.PORTRAIT_LAYOUT)
+        			{
+        				for(int i=entries.size()-1;i>=0;i--)
+            			{
+            				if(((MenuItem)entries.elementAt(i)).getType()!=MenuItem.TYPE_POPUP_ITEM)
+            				{
+            					//we set it as the left and remove it from the items list
+            					leftItem=(MenuItem)entries.elementAt(i);
+            					entries.removeElement(leftItem);
+            					break;
+            				}
+            			}
+        			}
+        			rightItem=null;
+        		}
+        	}
+		}
     }
     public void setParent(Item parent)
     {
         this.parent=parent;
+        try {
+			for(int i=0;i<entries.size();i++){
+				MenuItem itm=(MenuItem)entries.elementAt(i);
+				itm.setParent(this);
+				if(itm.getType()==MenuItem.TYPE_POPUP_ITEM){
+					((Menu)mappings.get(itm)).setParent(this);
+				}
+			}
+		} catch (Exception e) {
+//			e.printStackTrace();
+		}
         organizeItems();
     }
     void setDrawStart(int start)
@@ -373,48 +387,52 @@ public class Menu implements Item
      */
     public void add(Menu menu)throws IllegalArgumentException
     {
-    	if(currentItem!=null)currentItem.focusLost();
-		if(parent==null)
-    	{
-    		throw new IllegalStateException("You cannot add a submenu " +
-    				"to a menu before setting the parent menus parent");
-    	}
-    	//first we move the left and right items back to entries
-    	if(rightItem!=null)
-    	{
-    		entries.addElement(rightItem);
-    		rightItem=null;
-    	}
-    	if(leftItem!=null)
-    	{
-    		entries.addElement(leftItem);
-    		leftItem=null;
-    	}
-        menu.setParent(this);
-        //set the alignment of the incoming menu
-        switch(this.alignment)
-        {
-            case Menu.ALIGN_LEFT:
-                menu.setAlignment(Menu.ALIGN_RIGHT);
-                break;
-            case Menu.ALIGN_RIGHT:
-                menu.setAlignment(Menu.ALIGN_LEFT);
-                break;
-        }
-        //Add a new sub menu item to the main menu
-        MenuItem it=new MenuItem(menu.getName(),MenuItem.TYPE_POPUP_ITEM);
-        //add a mapping to the mappings table
-        mappings.put(it, menu);
-        it.setParent(this);
-        it.setAlignment(this.alignment);
-        entries.addElement(it);
-        //rearrange the current menu contents
-        organizeItems();
-        //scroll to the topmost item
-        scrollToTop();
-        //Recalculate the display rects for items if redisplaying
-        resetItemRects();
-        if(displaying)
+    	synchronized (this) {
+    		if(currentItem!=null)currentItem.focusLost();
+    		if(parent==null)
+        	{
+        		throw new IllegalStateException("You cannot add a submenu " +
+        				"to a menu before setting the parent menus parent");
+        	}
+        	//first we move the left and right items back to entries
+        	if(rightItem!=null)
+        	{
+        		entries.addElement(rightItem);
+        		rightItem=null;
+        	}
+        	if(leftItem!=null)
+        	{
+        		entries.addElement(leftItem);
+        		leftItem=null;
+        	}
+        	if(parent!=null)
+            menu.setParent(this);
+            //set the alignment of the incoming menu
+            switch(this.alignment)
+            {
+                case Menu.ALIGN_LEFT:
+                    menu.setAlignment(Menu.ALIGN_RIGHT);
+                    break;
+                case Menu.ALIGN_RIGHT:
+                    menu.setAlignment(Menu.ALIGN_LEFT);
+                    break;
+            }
+            //Add a new sub menu item to the main menu
+            MenuItem it=new MenuItem(menu.getName(),MenuItem.TYPE_POPUP_ITEM);
+            //add a mapping to the mappings table
+            mappings.put(it, menu);
+            if(parent!=null)
+            it.setParent(this);
+            it.setAlignment(this.alignment);
+            entries.addElement(it);
+            //rearrange the current menu contents
+            organizeItems();
+            //scroll to the topmost item
+            scrollToTop();
+            //Recalculate the display rects for items if redisplaying
+            resetItemRects();
+		}
+    	if(displaying)
         {
             repaint(currentView);
             if(this.parent instanceof Window)
@@ -430,29 +448,32 @@ public class Menu implements Item
      */
     public void add(MenuItem item)
     {
-    	if(currentItem!=null)currentItem.focusLost();
-		if(parent instanceof Window && this.name.equals(item.getName()))
-		{
-			throw new IllegalArgumentException("You cannot have a menu item with the same name as the menu for the main window");
+    	synchronized (this) {
+    		if(currentItem!=null)currentItem.focusLost();
+    		if(parent instanceof Window && this.name.equals(item.getName()))
+    		{
+    			throw new IllegalArgumentException("You cannot have a menu item with the same name as the menu for the main window");
+    		}
+    		//first we move the left and right items back to entries
+    		if(rightItem!=null)
+    		{
+    			entries.addElement(rightItem);
+    			rightItem=null;
+    		}
+    		if(leftItem!=null)
+    		{
+    			entries.addElement(leftItem);
+    			leftItem=null;
+    		}
+    		if(parent!=null)
+    		item.setParent(this);
+    		//Add the item to the entries
+    		entries.addElement(item);
+    		organizeItems();
+    		scrollToTop();
+    		//Recalculate the display rects for items if redisplaying
+    		resetItemRects();
 		}
-		//first we move the left and right items back to entries
-		if(rightItem!=null)
-		{
-			entries.addElement(rightItem);
-			rightItem=null;
-		}
-		if(leftItem!=null)
-		{
-			entries.addElement(leftItem);
-			leftItem=null;
-		}
-		item.setParent(this);
-		//Add the item to the entries
-		entries.addElement(item);
-		organizeItems();
-		scrollToTop();
-		//Recalculate the display rects for items if redisplaying
-		resetItemRects();
 		if(displaying)
 		{
 			repaint(currentView);
@@ -656,122 +677,123 @@ public class Menu implements Item
     //Method that recalculates the display rects for items
     private void resetItemRects()
     {
-    	//if display rect is not send then return
-        if(displayRect.width<2 || entries.isEmpty() || spanRect.height<=2)
-        {
-            return;
-        }
-        //Set the display rects for the menu items respecively
-        Rectangle tmpRect=new Rectangle();
-        tmpRect.x=displayRect.x+1;
-        tmpRect.height=GlobalControl.getControl().getMenuItemBGround().getHeight();
-        tmpRect.width=displayRect.width-2;
-        //Set the number of displayable menu items
-        displayable=(spanRect.height-2)/(tmpRect.height);
-        //The starting point x for all items
-        //Set whether scrolling is necessary
-        int size=entries.size();
-        if(size>displayable)
-        {
-        	scroll=true;
-            scrolls=new MenuItem[2];
-            scrolls[0]=new MenuItem("", MenuItem.TYPE_UP_SCROLL_ITEM);
-            scrolls[1]=new MenuItem("", MenuItem.TYPE_DOWN_SCROLL_ITEM);
-            currentlyVisible=displayable-1;
-            //set the display rect for scroll items
-            Rectangle tmpR=new Rectangle();
-            tmpR.x=tmpRect.x;
-            tmpR.width=tmpRect.width;
-            tmpR.height=tmpRect.height/2;
-            tmpR.y=spanRect.y+spanRect.height-(tmpRect.height*displayable);
-            scrolls[0].setDisplayRect(tmpR);
-            tmpR=new Rectangle();
-            tmpR.x=tmpRect.x;
-            tmpR.width=tmpRect.width;
-            tmpR.height=tmpRect.height/2;
-            tmpR.y=spanRect.y+spanRect.height-tmpR.height;
-            scrolls[1].setDisplayRect(tmpR);
-        }
-        if(size<=displayable)
-        {
-        	currentlyVisible=size;
-        	if(scroll)
-        	{
-        		scroll=false;
-                scrolls=null;
-                Runtime.getRuntime().gc();
-        	}
-        }
-        currentView.x=displayRect.x;
-        currentView.width=displayRect.width;
-        //if scrolling simply set the rects
-        int startY=spanRect.y+spanRect.height-tmpRect.height;
-        if(scroll)
-        {
-            startY=scrolls[0].getDisplayRect().y+scrolls[0].getDisplayRect().height;
-            currentView.y=scrolls[0].getDisplayRect().y-1;
-            currentView.height=tmpRect.height*displayable+2;
-        }
-        else
-        {
-        	int reqHei=currentlyVisible*tmpRect.height;
-            //calculate the index of the start element
-            switch(startPoint)
+    	synchronized (this) {
+    		//if display rect is not send then return
+            if(displayRect.width<2 || entries.isEmpty() || spanRect.height<=2)
             {
-                case Menu.START_TOP:
-                {
-                	int diff=(spanRect.y+spanRect.height)-(drawStart-tmpRect.height);
-                    if(reqHei>diff)
-                    {
-                        //start from the bottom and move upwards
-                        startY=spanRect.y+spanRect.height-tmpRect.height*currentlyVisible;
-                    }
-                    else
-                    {
-                        //start from the top an move upwards
-                        startY=drawStart-tmpRect.height;
-                    }
-                    break;
-                }
-                case Menu.START_BOTTOM:
-                {
-                	int diff=drawStart-spanRect.y;
-                    if(reqHei>diff)
-                    {
-                        //start from the top an move downwards
-                        startY=spanRect.y+1;
-                    }
-                    else
-                    {
-                        //start from the bottom an move upwards
-                        startY=drawStart-reqHei;
-                    }
-                    break;
-                }
+                return;
             }
-            currentView.y=startY-1;
-            currentView.height=reqHei+2;
-        }
-        //set the rects for all the visible items
-        int test=topIndex-currentlyVisible;
-        int i;
-        for(i=entries.size()-1;i>topIndex;i--)
-        {
-        	((MenuItem)entries.elementAt(i)).getDisplayRect().height=0;
-        }
-        for(i=topIndex;i>test;i--)
-        {
-        	Rectangle itmRect=new Rectangle();
-        	itmRect.x=tmpRect.x;
-        	itmRect.width=tmpRect.width;
-        	itmRect.height=tmpRect.height;
-        	itmRect.y=startY+(topIndex-i)*tmpRect.height;
-        	((MenuItem)entries.elementAt(i)).setDisplayRect(itmRect);
-        }
-        for(i=test;i>=0;i--)
-        {
-        	((MenuItem)entries.elementAt(i)).getDisplayRect().height=0;
-        }
+            //Set the display rects for the menu items respecively
+            Rectangle tmpRect=new Rectangle();
+            tmpRect.x=displayRect.x+1;
+            tmpRect.height=GlobalControl.getControl().getMenuItemBGround().getHeight();
+            tmpRect.width=displayRect.width-2;
+            //Set the number of displayable menu items
+            displayable=(spanRect.height-2)/(tmpRect.height);
+            //The starting point x for all items
+            //Set whether scrolling is necessary
+            if(entries.size()>displayable)
+            {
+            	scroll=true;
+                scrolls=new MenuItem[2];
+                scrolls[0]=new MenuItem("", MenuItem.TYPE_UP_SCROLL_ITEM);
+                scrolls[1]=new MenuItem("", MenuItem.TYPE_DOWN_SCROLL_ITEM);
+                currentlyVisible=displayable-1;
+                //set the display rect for scroll items
+                Rectangle tmpR=new Rectangle();
+                tmpR.x=tmpRect.x;
+                tmpR.width=tmpRect.width;
+                tmpR.height=tmpRect.height/2;
+                tmpR.y=spanRect.y+spanRect.height-(tmpRect.height*displayable);
+                scrolls[0].setDisplayRect(tmpR);
+                tmpR=new Rectangle();
+                tmpR.x=tmpRect.x;
+                tmpR.width=tmpRect.width;
+                tmpR.height=tmpRect.height/2;
+                tmpR.y=spanRect.y+spanRect.height-tmpR.height;
+                scrolls[1].setDisplayRect(tmpR);
+            }
+            if(entries.size()<=displayable)
+            {
+            	currentlyVisible=entries.size();
+            	if(scroll)
+            	{
+            		scroll=false;
+                    scrolls=null;
+                    Runtime.getRuntime().gc();
+            	}
+            }
+            currentView.x=displayRect.x;
+            currentView.width=displayRect.width;
+            //if scrolling simply set the rects
+            int startY=spanRect.y+spanRect.height-tmpRect.height;
+            if(scroll)
+            {
+                startY=scrolls[0].getDisplayRect().y+scrolls[0].getDisplayRect().height;
+                currentView.y=scrolls[0].getDisplayRect().y-1;
+                currentView.height=tmpRect.height*displayable+2;
+            }
+            else
+            {
+            	int reqHei=currentlyVisible*tmpRect.height;
+                //calculate the index of the start element
+                switch(startPoint)
+                {
+                    case Menu.START_TOP:
+                    {
+                    	int diff=(spanRect.y+spanRect.height)-(drawStart-tmpRect.height);
+                        if(reqHei>diff)
+                        {
+                            //start from the bottom and move upwards
+                            startY=spanRect.y+spanRect.height-tmpRect.height*currentlyVisible;
+                        }
+                        else
+                        {
+                            //start from the top an move upwards
+                            startY=drawStart-tmpRect.height;
+                        }
+                        break;
+                    }
+                    case Menu.START_BOTTOM:
+                    {
+                    	int diff=drawStart-spanRect.y;
+                        if(reqHei>diff)
+                        {
+                            //start from the top an move downwards
+                            startY=spanRect.y+1;
+                        }
+                        else
+                        {
+                            //start from the bottom an move upwards
+                            startY=drawStart-reqHei;
+                        }
+                        break;
+                    }
+                }
+                currentView.y=startY-1;
+                currentView.height=reqHei+2;
+            }
+            //set the rects for all the visible items
+            int test=topIndex-currentlyVisible;
+            int i;
+            for(i=entries.size()-1;i>topIndex;i--)
+            {
+            	((MenuItem)entries.elementAt(i)).getDisplayRect().height=0;
+            }
+            for(i=topIndex;i>test;i--)
+            {
+            	Rectangle itmRect=new Rectangle();
+            	itmRect.x=tmpRect.x;
+            	itmRect.width=tmpRect.width;
+            	itmRect.height=tmpRect.height;
+            	itmRect.y=startY+(topIndex-i)*tmpRect.height;
+            	((MenuItem)entries.elementAt(i)).setDisplayRect(itmRect);
+            }
+            for(i=test;i>=0;i--)
+            {
+            	((MenuItem)entries.elementAt(i)).getDisplayRect().height=0;
+            }
+		}
     }
     public void keyPressedEvent(int keyCode)
     {
@@ -998,6 +1020,24 @@ public class Menu implements Item
     							barRect.y+1, Graphics.TOP|Graphics.LEFT);
     				}
     			}
+    			if(GlobalControl.getControl().isShowTime()){
+    				g.setClip(barRect.x, barRect.y, barRect.width, barRect.height);
+    				Calendar cal=Calendar.getInstance();
+    				StringBuffer timeString=new StringBuffer();
+    				timeString.append(cal.get(Calendar.HOUR)==0?"12":""+cal.get(Calendar.HOUR));
+    				timeString.append(":");
+    				timeString.append(cal.get(Calendar.MINUTE)<10?("0"+cal.get(Calendar.MINUTE)):
+    					(""+cal.get(Calendar.MINUTE)));
+    				Font timeFont=Font.getFont(Font.FACE_PROPORTIONAL, Font.STYLE_PLAIN, 
+    						Font.SIZE_SMALL);
+    				int timeWidth=timeFont.stringWidth(timeString.toString());
+    				g.setFont(timeFont);
+    				g.setColor(((Integer)GlobalControl.getControl().getStyle().
+    						getProperty(Style.MENU_BAR_FOREGROUND)).intValue());
+    				g.drawString(timeString.toString(), barRect.width/2-timeWidth/2, 
+    						barRect.y+barRect.height-timeFont.getHeight()-2,
+    						Graphics.TOP|Graphics.LEFT);
+    			}
     		}
     		if(GlobalControl.getControl().getLayout()==GlobalControl.LANDSCAPE_LAYOUT)
     		{
@@ -1042,6 +1082,7 @@ public class Menu implements Item
         {
             if(entries.isEmpty())
             {
+            	g.setClip(clip.x, clip.y, clip.width, clip.height);
                 this.focusLost();
                 return;
             }
@@ -1100,8 +1141,7 @@ public class Menu implements Item
     {
         Rectangle rect=new Rectangle();
         int minWid=rect.width;
-        int size=entries.size();
-        int minHeight=size>0?
+        int minHeight=entries.size()>0?
             ((MenuItem)entries.elementAt(0)).getMinimumDisplayRect(displayRect.width).height:
             rect.height;
         rect.width=minWid>displayRect.width?minWid:displayRect.width;
@@ -1177,7 +1217,7 @@ public class Menu implements Item
     }
     private void processKey(int keyCode)
     {
-    	if(keyCode==-7)//this is the right soft key
+    	if(keyCode==GlobalControl.getSoftKeys()[1])//this is the right soft key
     	{	
     		if(entries.isEmpty()){
     			if(rightItem!=null){
@@ -1219,7 +1259,7 @@ public class Menu implements Item
     		}
     		return;
     	}
-    	else if(keyCode==-6)//this is the left soft key
+    	else if(keyCode==GlobalControl.getSoftKeys()[0])//this is the left soft key
     	{
     		if(isDisplaying())
     		{

@@ -12,8 +12,10 @@ import javax.microedition.lcdui.game.Sprite;
 
 import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
+import org.flemil.event.ComboBoxListener;
 import org.flemil.event.ListSelectionListener;
 import org.flemil.event.MenuCommandListener;
+import org.flemil.event.TextItemListener;
 import org.flemil.i18n.LocaleManager;
 import org.flemil.ui.Item;
 import org.flemil.ui.TextItem;
@@ -37,6 +39,16 @@ public class ComboBox implements TextItem {
 	private MenuItem selectItem;
 	private MenuItem cancelItem;
 	private boolean textChanged;
+	private ComboBoxListener listener;
+	
+	public TextItemListener getTextListener() {
+		return nameDisplayer.getTextListener();
+	}
+
+	public void setTextListener(TextItemListener textListener) {
+		nameDisplayer.setTextListener(textListener);
+	}
+
 	/**
 	 * Creates a new ComboBox with no entries
 	 */
@@ -44,9 +56,26 @@ public class ComboBox implements TextItem {
 	{
 		nameDisplayer=new Label("");
 		nameDisplayer.setFocusible(true);
-		nameDisplayer.setParent(this);
 		nameDisplayer.setTextWraps(false);
 		displayRect=new Rectangle();
+	}
+	
+	public ComboBox(Object []items){
+		this();
+		setElements(items);
+	}
+	
+	public void setElements(Object [] elements){
+		synchronized (this) {
+			selectedIndex=-1;
+			this.elements.removeAllElements();
+			for(int i=0;i<elements.length;i++){
+				this.elements.addElement(elements[i]);
+			}
+			if(!this.elements.isEmpty()){
+				selectedIndex=0;
+			}
+		}
 	}
 	
 	/**
@@ -111,6 +140,9 @@ public class ComboBox implements TextItem {
 			currentObject=elements.elementAt(index);
 			selectedIndex=index;
 			nameDisplayer.setText(currentObject.toString());
+			if(listener!=null){
+				listener.selectionChanged(this);
+			}
 		}
 	}
 	/**
@@ -136,12 +168,14 @@ public class ComboBox implements TextItem {
 	public Rectangle getDisplayRect() {
 		return displayRect;
 	}
-	public synchronized Rectangle getMinimumDisplayRect(int availWidth) {
-		int boxWid=nameDisplayer.getFont().getHeight()+2;
-		Rectangle tmp=nameDisplayer.getMinimumDisplayRect(availWidth-boxWid);
-		tmp.width=availWidth;
-		tmp.height=nameDisplayer.getFont().getHeight()+4;
-		return tmp;
+	public Rectangle getMinimumDisplayRect(int availWidth) {
+		synchronized (this) {
+			int boxWid=nameDisplayer.getFont().getHeight()+2;
+			Rectangle tmp=nameDisplayer.getMinimumDisplayRect(availWidth-boxWid);
+			tmp.width=availWidth;
+			tmp.height=nameDisplayer.getFont().getHeight()+6;
+			return tmp;
+		}
 	}
 
 	public Item getParent() {
@@ -188,9 +222,6 @@ public class ComboBox implements TextItem {
 				GlobalControl.getControl().getCurrent().hidePopup(
 						GlobalControl.getControl().getCurrent().getCurrentPopup());
 				repaint(displayRect);
-				if(nameDisplayer.isTextWraps()){
-					GlobalControl.getControl().refreshLayout();
-				}
 			}
 		});
 		cancelItem.setListener(new MenuCommandListener(){
@@ -209,13 +240,9 @@ public class ComboBox implements TextItem {
 
 			public void itemSelected(List source) {
 				setSelectedIndex(selectedIndex=source.getSelectedIndex());
-				nameDisplayer.setText(elements.elementAt(selectedIndex).toString());
 				GlobalControl.getControl().getCurrent().hidePopup(
 						GlobalControl.getControl().getCurrent().getCurrentPopup());
 				repaint(displayRect);
-				if(nameDisplayer.isTextWraps()){
-					GlobalControl.getControl().refreshLayout();
-				}
 			}
 		});
 	}
@@ -273,13 +300,15 @@ public class ComboBox implements TextItem {
         	g.fillRoundRect(displayRect.x, displayRect.y, 
         			displayRect.width-1, displayRect.height-1,
         			radius, radius);
-        	g.setColor(focussed?((Integer)GlobalControl.getControl().getStyle().
-        			getProperty(Style.COMPONENT_FOCUS_OUTLINE_COLOR)).intValue():
-        				((Integer)GlobalControl.getControl().getStyle().
-        						getProperty(Style.COMPONENT_OUTLINE_COLOR)).intValue());
-        	g.drawRoundRect(displayRect.x, displayRect.y, 
-        			displayRect.width-1, displayRect.height-1,
-        			radius, radius);
+        	if(paintBorder){
+        		g.setColor(focussed?((Integer)GlobalControl.getControl().getStyle().
+            			getProperty(Style.COMPONENT_FOCUS_OUTLINE_COLOR)).intValue():
+            				((Integer)GlobalControl.getControl().getStyle().
+            						getProperty(Style.COMPONENT_OUTLINE_COLOR)).intValue());
+            	g.drawRoundRect(displayRect.x, displayRect.y, 
+            			displayRect.width-1, displayRect.height-1,
+            			radius, radius);
+        	}
         	nameDisplayer.paint(g, intersect);
         	//dar the circle
         	g.setColor(focussed?((Integer)GlobalControl.getControl().getStyle().
@@ -287,20 +316,24 @@ public class ComboBox implements TextItem {
     					((Integer)GlobalControl.getControl().getStyle().
     				getProperty(Style.COMPONENT_OUTLINE_COLOR)).intValue());
         	if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
-        		g.drawLine(displayRect.x+displayRect.width-nameDisplayer.getFont().getHeight()-2,
-            			displayRect.y, 
-            			displayRect.x+displayRect.width-nameDisplayer.getFont().getHeight()-2, 
-            			displayRect.y+displayRect.height);
+        		if(paintBorder){
+        			g.drawLine(displayRect.x+displayRect.width-nameDisplayer.getFont().getHeight()-2,
+                			displayRect.y, 
+                			displayRect.x+displayRect.width-nameDisplayer.getFont().getHeight()-2, 
+                			displayRect.y+displayRect.height);
+        		}
             	g.drawImage(downImage, 
             			displayRect.x+displayRect.width-nameDisplayer.getFont().getHeight(), 
             			displayRect.y+displayRect.height/2-downImage.getHeight()/2,
             			Graphics.TOP|Graphics.LEFT);
         	}
         	else{
-        		g.drawLine(displayRect.x+nameDisplayer.getFont().getHeight()+2,
-            			displayRect.y, 
-            			displayRect.x+nameDisplayer.getFont().getHeight()+2, 
-            			displayRect.y+displayRect.height);
+        		if(paintBorder){
+        			g.drawLine(displayRect.x+nameDisplayer.getFont().getHeight()+2,
+                			displayRect.y, 
+                			displayRect.x+nameDisplayer.getFont().getHeight()+2, 
+                			displayRect.y+displayRect.height);
+        		}
             	g.drawImage(downImage, 
             			displayRect.x+1, 
             			displayRect.y+displayRect.height/2-downImage.getHeight()/2,
@@ -344,7 +377,9 @@ public class ComboBox implements TextItem {
     		{
     			downImage=GlobalControl.getImageFactory().scaleImage(Image.createImage("/arrow.png"), imgWidth,
     					imgWidth, Sprite.TRANS_ROT270);
-    		}catch(IOException ioe){ioe.printStackTrace();}
+    		}catch(IOException ioe){
+//    			ioe.printStackTrace();
+    			}
 		}
 		this.displayRect=rect;
 		if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
@@ -372,6 +407,7 @@ public class ComboBox implements TextItem {
 
 	public void setParent(Item parent) {
 		this.parent=parent;
+		nameDisplayer.setParent(this);
 	}
 	public byte getAlignment() {
 		return this.nameDisplayer.getAlignment();
@@ -399,7 +435,14 @@ public class ComboBox implements TextItem {
 		return currentObject.toString();
 	}
 
-	public void setText(String text) {}
+	public void setText(String text) {
+		for(int i=0;i<elements.size();i++){
+			if(elements.elementAt(i).toString().equals(text)){
+				setSelectedIndex(i);
+				return;
+			}
+		}
+	}
 	public void resetFont() {
 		this.nameDisplayer.resetFont();
 	}
@@ -415,12 +458,16 @@ public class ComboBox implements TextItem {
 		return nameDisplayer.isFocussed();
 	}
 
-	public synchronized boolean isScrolling() {
-		return nameDisplayer.isScrolling();
+	public boolean isScrolling() {
+		synchronized (this) {
+			return nameDisplayer.isScrolling();
+		}
 	}
 
-	public synchronized void setScrolling(boolean scrolling) {
-		nameDisplayer.setScrolling(scrolling);
+	public void setScrolling(boolean scrolling) {
+		synchronized (this) {
+			nameDisplayer.setScrolling(scrolling);
+		}
 	}
 
 	public void setTextIndent(int indent) {
@@ -445,4 +492,12 @@ public class ComboBox implements TextItem {
 	public boolean isTextChanged() {
 		return textChanged;
 	}
-}
+
+	public void setListener(ComboBoxListener listener) {
+		this.listener = listener;
+	}
+
+	public ComboBoxListener getListener() {
+		return listener;
+	}
+} 

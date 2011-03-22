@@ -259,9 +259,12 @@ public class Style
     public static final byte BUTTON_SHADING=60;
 
     private Object []props=new Object[61];
+    
+    private String id;
 
-    private Style()
+    private Style(String id)
     {
+    	this.id=id;
     }
 
     /**
@@ -314,7 +317,7 @@ public class Style
      */
     public static Style getDefault()
     {
-        Style style=new Style();
+        Style style=new Style("-1");
         style.setProperty(Style.COMPONENT_BACKGROUND, new Integer(0xffffff));
         style.setProperty(Style.COMPONENT_FOREGROUND, new Integer(0x000000));
         style.setProperty(Style.COMPONENT_FOCUS_BACKGROUND, new Integer(0xffeecc));
@@ -362,7 +365,7 @@ public class Style
         style.setProperty(Style.MENU_ITEM_SHADING, new Boolean(true)); 
         
         
-        style.setProperty(Style.TAB_CURVE_RADIUS, new Integer(10));
+        style.setProperty(Style.TAB_CURVE_RADIUS, new Integer(4));
         style.setProperty(Style.TAB_FONT, Font.getFont(
                 Font.FACE_PROPORTIONAL, Font.STYLE_BOLD, Font.SIZE_MEDIUM));
         style.setProperty(Style.TAB_BACKGROUND, new Integer(0xffffff));
@@ -375,7 +378,7 @@ public class Style
         style.setProperty(Style.TAB_LIGHTING, new Byte(ImageFactory.LIGHT_BOTTOM));
         style.setProperty(Style.TAB_SHADING, new Boolean(true));
         
-        style.setProperty(Style.BUTTON_CURVE_RADIUS, new Integer(10));
+        style.setProperty(Style.BUTTON_CURVE_RADIUS, new Integer(4));
         style.setProperty(Style.BUTTON_FONT, Font.getFont(
                 Font.FACE_PROPORTIONAL, Font.STYLE_BOLD, Font.SIZE_MEDIUM));
         style.setProperty(Style.BUTTON_BACKGROUND, new Integer(0x444488));
@@ -444,6 +447,7 @@ public class Style
             return props[propId];
         }
     }
+    
     /**
      * Loads a theme from a Theme file and packages it into a Style object so 
      * that it can be used in the application by making a call to the
@@ -462,181 +466,321 @@ public class Style
      */
     public synchronized static Style loadStyle(InputStream is)throws IOException
     {
-    	Hashtable table=new Hashtable();
-    	table.put("component-background", new Byte((byte)0));
-    	table.put("component-foreground", new Byte((byte)1));
-    	table.put("curves-radius", new Byte((byte)2));
-    	table.put("menu-highlight-background", new Byte((byte)3));
-    	table.put("menu-highlight-foreground", new Byte((byte)4));
-    	table.put("component-focus-background", new Byte((byte)5));
-    	table.put("component-focus-foreground", new Byte((byte)6));
-    	table.put("title-background", new Byte((byte)7));
-    	table.put("title-foreground", new Byte((byte)8));
-    	table.put("menu-bar-background", new Byte((byte)9));
-    	table.put("menu-bar-foreground", new Byte((byte)10));
-    	table.put("component-outline-color", new Byte((byte)11));
-    	table.put("component-focus-outline-color", new Byte((byte)12));
-    	table.put("menu-item-foreground", new Byte((byte)13));
-    	table.put("menu-background", new Byte((byte)14));
-    	table.put("menu-item-font", new Byte((byte)15));
-    	table.put("window-title-font", new Byte((byte)16));
-    	table.put("item-font", new Byte((byte)17));
-    	table.put("menu-bar-font", new Byte((byte)18));
-    	table.put("title-top-opacity", new Byte((byte)19));
-    	table.put("title-bottom-opacity", new Byte((byte)20));
-    	table.put("menu-bar-top-opacity", new Byte((byte)21));
-    	table.put("menu-bar-bottom-opacity", new Byte((byte)22));
-    	table.put("menu-item-top-opacity", new Byte((byte)23));
-    	table.put("menu-item-bottom-opacity", new Byte((byte)24));
-    	table.put("fade-opacity", new Byte((byte)25));
-    	table.put("fade-color", new Byte((byte)26));
-    	table.put("theme-background", new Byte((byte)27));
-    	table.put("scroll-bar-background", new Byte((byte)28));
-    	table.put("scroll-bar-foreground", new Byte((byte)29));
-    	table.put("theme-foreground", new Byte((byte)30));
-    	table.put("theme-top-opacity", new Byte((byte)31));
-    	table.put("theme-bottom-opacity", new Byte((byte)32));
-    	table.put("theme-shading", new Byte((byte)33));
-    	table.put("theme-lighting", new Byte((byte)34));
-    	table.put("title-bar-lighting", new Byte((byte)35));
-    	table.put("title-bar-shading", new Byte((byte)36));
-    	table.put("menu-bar-lighting", new Byte((byte)37));
-    	table.put("menu-bar-shading", new Byte((byte)38));
-    	table.put("menu-item-lighting", new Byte((byte)39));
-    	table.put("menu-item-shading", new Byte((byte)40));
-    	
-    	table.put("tab-curve-radius", new Byte((byte)41));
-    	table.put("tab-font", new Byte((byte)42));
-    	table.put("tab-background", new Byte((byte)43));
-    	table.put("tab-foreground", new Byte((byte)44));
+        Hashtable table=new Hashtable();
+        table.put("component-background", new Byte((byte)0));
+        table.put("component-foreground", new Byte((byte)1));
+        table.put("curves-radius", new Byte((byte)2));
+        table.put("menu-highlight-background", new Byte((byte)3));
+        table.put("menu-highlight-foreground", new Byte((byte)4));
+        table.put("component-focus-background", new Byte((byte)5));
+        table.put("component-focus-foreground", new Byte((byte)6));
+        table.put("title-background", new Byte((byte)7));
+        table.put("title-foreground", new Byte((byte)8));
+        table.put("menu-bar-background", new Byte((byte)9));
+        table.put("menu-bar-foreground", new Byte((byte)10));
+        table.put("component-outline-color", new Byte((byte)11));
+        table.put("component-focus-outline-color", new Byte((byte)12));
+        table.put("menu-item-foreground", new Byte((byte)13));
+        table.put("menu-background", new Byte((byte)14));
+        table.put("menu-item-font", new Byte((byte)15));
+        table.put("window-title-font", new Byte((byte)16));
+        table.put("item-font", new Byte((byte)17));
+        table.put("menu-bar-font", new Byte((byte)18));
+        table.put("title-top-opacity", new Byte((byte)19));
+        table.put("title-bottom-opacity", new Byte((byte)20));
+        table.put("menu-bar-top-opacity", new Byte((byte)21));
+        table.put("menu-bar-bottom-opacity", new Byte((byte)22));
+        table.put("menu-item-top-opacity", new Byte((byte)23));
+        table.put("menu-item-bottom-opacity", new Byte((byte)24));
+        table.put("fade-opacity", new Byte((byte)25));
+        table.put("fade-color", new Byte((byte)26));
+        table.put("theme-background", new Byte((byte)27));
+        table.put("scroll-bar-background", new Byte((byte)28));
+        table.put("scroll-bar-foreground", new Byte((byte)29));
+        table.put("theme-foreground", new Byte((byte)30));
+        table.put("theme-top-opacity", new Byte((byte)31));
+        table.put("theme-bottom-opacity", new Byte((byte)32));
+        table.put("theme-shading", new Byte((byte)33));
+        table.put("theme-lighting", new Byte((byte)34));
+        table.put("title-bar-lighting", new Byte((byte)35));
+        table.put("title-bar-shading", new Byte((byte)36));
+        table.put("menu-bar-lighting", new Byte((byte)37));
+        table.put("menu-bar-shading", new Byte((byte)38));
+        table.put("menu-item-lighting", new Byte((byte)39));
+        table.put("menu-item-shading", new Byte((byte)40));
         
-    	table.put("tab-focus-background", new Byte((byte)45));
-    	table.put("tab-focus-foreground", new Byte((byte)46));
-    	table.put("tab-top-opacity", new Byte((byte)47));
-    	table.put("tab-bottom-opacity", new Byte((byte)48));
-    	table.put("tab-lighting", new Byte((byte)49));
-    	table.put("tab-shading", new Byte((byte)50));
+        table.put("tab-curve-radius", new Byte((byte)41));
+        table.put("tab-font", new Byte((byte)42));
+        table.put("tab-background", new Byte((byte)43));
+        table.put("tab-foreground", new Byte((byte)44));
         
-    	table.put("button-curve-radius", new Byte((byte)51));
-    	table.put("button-font", new Byte((byte)52));
-    	table.put("button-background", new Byte((byte)53));
-    	table.put("button-foreground", new Byte((byte)54));
-    	table.put("button-focus-background", new Byte((byte)55));
-    	table.put("button-focus-foreground", new Byte((byte)56));
+        table.put("tab-focus-background", new Byte((byte)45));
+        table.put("tab-focus-foreground", new Byte((byte)46));
+        table.put("tab-top-opacity", new Byte((byte)47));
+        table.put("tab-bottom-opacity", new Byte((byte)48));
+        table.put("tab-lighting", new Byte((byte)49));
+        table.put("tab-shading", new Byte((byte)50));
         
-    	table.put("button-top-opacity", new Byte((byte)57));
-    	table.put("button-bottom-opacity", new Byte((byte)58));
-    	table.put("button-lighting", new Byte((byte)59));
-    	table.put("button-shading", new Byte((byte)60));
-    	Style style=Style.getDefault();
+        table.put("button-curve-radius", new Byte((byte)51));
+        table.put("button-font", new Byte((byte)52));
+        table.put("button-background", new Byte((byte)53));
+        table.put("button-foreground", new Byte((byte)54));
+        table.put("button-focus-background", new Byte((byte)55));
+        table.put("button-focus-foreground", new Byte((byte)56));
+        
+        table.put("button-top-opacity", new Byte((byte)57));
+        table.put("button-bottom-opacity", new Byte((byte)58));
+        table.put("button-lighting", new Byte((byte)59));
+        table.put("button-shading", new Byte((byte)60));
+        Style style=Style.getDefault();
+        Hashtable props=ResourcesFactory.loadProperites(is);
+        Enumeration keys=props.keys();
+        while(keys.hasMoreElements()){
+                String property=(String)keys.nextElement();
+                String value=(String)props.get(property);
+                property=property.toLowerCase();
+                value=value.toLowerCase();
+                if(table.containsKey(property))
+                        {
+                                int val=((Byte)table.get(property)).byteValue();
+                                switch(val)
+                                {
+                                case TITLE_BAR_SHADING:
+                                case MENU_BAR_SHADING:
+                                case MENU_ITEM_SHADING:
+                                case THEME_SHADING:
+                                case TAB_SHADING:
+                                case BUTTON_SHADING:
+                                {
+                                        if(value.toLowerCase().equals("yes"))
+                                        {
+                                                style.setProperty((byte)val, new Boolean(true));
+                                        }
+                                        else if(value.toLowerCase().equals("no"))
+                                        {
+                                                style.setProperty((byte)val, new Boolean(false));
+                                        }
+                                        //process for boolean
+                                        break;
+                                }
+                                case WINDOW_TITLE_FONT:
+                                case MENU_BAR_FONT:
+                                case MENU_ITEM_FONT:
+                                case ITEM_FONT:
+                                case TAB_FONT:
+                                case BUTTON_FONT:
+                                {
+                                        //process font
+                                        style.setProperty((byte)val, parseFont(value));
+                                        break;
+                                }
+                                case THEME_LIGHTING:
+                                case TITLE_BAR_LIGHTING:
+                                case MENU_BAR_LIGHTING:
+                                case MENU_ITEM_LIGHTING:
+                                case TAB_LIGHTING:
+                                case BUTTON_LIGHTING:
+                                {
+                                        if(value.toLowerCase().equals("front"))
+                                        {
+                                                style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_FRONT));
+                                        }
+                                        else if(value.toLowerCase().equals("behind"))
+                                        {
+                                                style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_BEHIND));
+                                        }
+                                        else if(value.toLowerCase().equals("top"))
+                                        {
+                                                style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_TOP));
+                                        }
+                                        else if(value.toLowerCase().equals("bottom"))
+                                        {
+                                                style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_BOTTOM));
+                                        }
+                                        break;
+                                }
+                                case TAB_TOP_OPACITY:
+                                case TAB_BOTTOM_OPACITY:
+                                case BUTTON_TOP_OPACITY:
+                                case BUTTON_BOTTOM_OPACITY:
+                                case TITLE_BOTTOM_OPACITY:
+                                case TITLE_TOP_OPACITY:
+                                case MENU_BAR_TOP_OPACITY:
+                                case MENU_BAR_BOTTOM_OPACITY:
+                                case MENU_ITEM_TOP_OPACITY:
+                                case MENU_ITEM_BOTTOM_OPACITY:
+                                case THEME_BOTTOM_OPACITY:
+                                case THEME_TOP_OPACITY:
+                                {
+                                        StringBuffer bf=new StringBuffer(value);
+                                        bf.deleteCharAt(0);
+                                        try
+                                        {
+                                                int intValue=Integer.parseInt(bf.toString(),16);
+                                                style.setProperty((byte)val, new Integer(intValue));
+                                        }
+                                        catch(NumberFormatException nfe)
+                                        {
+                                                nfe.printStackTrace();
+                                        }  
+                                        break;
+                                }
+                                default:
+                                {
+                                        StringBuffer bf=new StringBuffer(value);
+                                        bf.deleteCharAt(0);
+                                        try
+                                        {
+                                                int intValue=Integer.parseInt(bf.toString(),16);
+                                                style.setProperty((byte)val, new Integer(intValue));
+                                        }
+                                        catch(NumberFormatException nfe)
+                                        {
+                                                nfe.printStackTrace();
+                                        }
+                                }
+                                }
+                        }
+        }
+        return style;
+    }
+    
+    
+    /**
+     * Loads a theme from a Theme file and packages it into a Style object so 
+     * that it can be used in the application by making a call to the
+     * GlobalControl.setStyle() method. The theme file is a plain text file that has
+     *  a simple and straight foward layout so that the application does not 
+     *  use so much memory trying to parse normal css or xml files. the theme files 
+     *  usually have a ftm (Flemil Theme) extension but any plain text document can be used.
+     *  The Theme file is formatted in such a way that every attribute that can be set on a Style
+     *  object is represented as a single line. See the demo application for a sample theme file
+     *   and how they can be loaded into the application. Also its possible to create and preview
+     *   themes on the <a href="http://flemil.com" target="_blank">Flemil website</a> which you can download to your 
+     *   computer for use in application development or directly from the application on the mobile.
+     * @param is InputStream that contains the theme definition.
+     * @param is style the style to update with the parsed style attributes from the input stream.
+     * @return a Style object representing the theme that was loaded from the InputStream
+     * @throws IOException if an IOExceotion occurs reading from the InputStream
+     * @since 1.0.3
+     */
+    public synchronized static Style loadStyle(InputStream is,Style style)throws IOException
+    {
     	Hashtable props=ResourcesFactory.loadProperites(is);
+    	if(props.size()<60){
+    		throw new IOException();
+    	}
     	Enumeration keys=props.keys();
     	while(keys.hasMoreElements()){
     		String property=(String)keys.nextElement();
     		String value=(String)props.get(property);
     		property=property.toLowerCase();
     		value=value.toLowerCase();
-    		if(table.containsKey(property))
+    		int val=-1;
+    		try{
+    			val=Byte.parseByte(property);
+    		}
+    		catch(NumberFormatException nfe){
+    			continue;
+    		}
+			switch(val)
 			{
-				int val=((Byte)table.get(property)).byteValue();
-				switch(val)
+			case TITLE_BAR_SHADING:
+			case MENU_BAR_SHADING:
+			case MENU_ITEM_SHADING:
+			case THEME_SHADING:
+			case TAB_SHADING:
+			case BUTTON_SHADING:
+			{
+				if(value.toLowerCase().equals("yes"))
 				{
-				case TITLE_BAR_SHADING:
-				case MENU_BAR_SHADING:
-				case MENU_ITEM_SHADING:
-				case THEME_SHADING:
-				case TAB_SHADING:
-				case BUTTON_SHADING:
-				{
-					if(value.toLowerCase().equals("yes"))
-					{
-						style.setProperty((byte)val, new Boolean(true));
-					}
-					else if(value.toLowerCase().equals("no"))
-					{
-						style.setProperty((byte)val, new Boolean(false));
-					}
-					//process for boolean
-					break;
+					style.setProperty((byte)val, new Boolean(true));
 				}
-				case WINDOW_TITLE_FONT:
-				case MENU_BAR_FONT:
-				case MENU_ITEM_FONT:
-				case ITEM_FONT:
-				case TAB_FONT:
-				case BUTTON_FONT:
+				else if(value.toLowerCase().equals("no"))
 				{
-					//process font
-					style.setProperty((byte)val, parseFont(value));
-					break;
+					style.setProperty((byte)val, new Boolean(false));
 				}
-				case THEME_LIGHTING:
-				case TITLE_BAR_LIGHTING:
-				case MENU_BAR_LIGHTING:
-				case MENU_ITEM_LIGHTING:
-				case TAB_LIGHTING:
-				case BUTTON_LIGHTING:
+				//process for boolean
+				break;
+			}
+			case WINDOW_TITLE_FONT:
+			case MENU_BAR_FONT:
+			case MENU_ITEM_FONT:
+			case ITEM_FONT:
+			case TAB_FONT:
+			case BUTTON_FONT:
+			{
+				//process font
+				style.setProperty((byte)val, parseFont(value));
+				break;
+			}
+			case THEME_LIGHTING:
+			case TITLE_BAR_LIGHTING:
+			case MENU_BAR_LIGHTING:
+			case MENU_ITEM_LIGHTING:
+			case TAB_LIGHTING:
+			case BUTTON_LIGHTING:
+			{
+				if(value.toLowerCase().equals("front"))
 				{
-					if(value.toLowerCase().equals("front"))
-					{
-						style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_FRONT));
-					}
-					else if(value.toLowerCase().equals("behind"))
-					{
-						style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_BEHIND));
-					}
-					else if(value.toLowerCase().equals("top"))
-					{
-						style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_TOP));
-					}
-					else if(value.toLowerCase().equals("bottom"))
-					{
-						style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_BOTTOM));
-					}
-					break;
+					style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_FRONT));
 				}
-				case TAB_TOP_OPACITY:
-				case TAB_BOTTOM_OPACITY:
-				case BUTTON_TOP_OPACITY:
-				case BUTTON_BOTTOM_OPACITY:
-				case TITLE_BOTTOM_OPACITY:
-				case TITLE_TOP_OPACITY:
-				case MENU_BAR_TOP_OPACITY:
-				case MENU_BAR_BOTTOM_OPACITY:
-				case MENU_ITEM_TOP_OPACITY:
-				case MENU_ITEM_BOTTOM_OPACITY:
-				case THEME_BOTTOM_OPACITY:
-				case THEME_TOP_OPACITY:
+				else if(value.toLowerCase().equals("behind"))
 				{
-					StringBuffer bf=new StringBuffer(value);
-					bf.deleteCharAt(0);
-					try
-					{
-						int intValue=Integer.parseInt(bf.toString(),16);
-						style.setProperty((byte)val, new Integer(intValue));
-					}
-					catch(NumberFormatException nfe)
-					{
-						nfe.printStackTrace();
-					}  
-					break;
+					style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_BEHIND));
 				}
-				default:
+				else if(value.toLowerCase().equals("top"))
 				{
-					StringBuffer bf=new StringBuffer(value);
-					bf.deleteCharAt(0);
-					try
-					{
-						int intValue=Integer.parseInt(bf.toString(),16);
-						style.setProperty((byte)val, new Integer(intValue));
-					}
-					catch(NumberFormatException nfe)
-					{
-						nfe.printStackTrace();
-					}
+					style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_TOP));
 				}
+				else if(value.toLowerCase().equals("bottom"))
+				{
+					style.setProperty((byte)val, new Byte(ImageFactory.LIGHT_BOTTOM));
+				}
+				break;
+			}
+			case TAB_TOP_OPACITY:
+			case TAB_BOTTOM_OPACITY:
+			case BUTTON_TOP_OPACITY:
+			case BUTTON_BOTTOM_OPACITY:
+			case TITLE_BOTTOM_OPACITY:
+			case TITLE_TOP_OPACITY:
+			case MENU_BAR_TOP_OPACITY:
+			case MENU_BAR_BOTTOM_OPACITY:
+			case MENU_ITEM_TOP_OPACITY:
+			case MENU_ITEM_BOTTOM_OPACITY:
+			case THEME_BOTTOM_OPACITY:
+			case THEME_TOP_OPACITY:
+			{
+				StringBuffer bf=new StringBuffer(value);
+				bf.deleteCharAt(0);
+				try
+				{
+					int intValue=Integer.parseInt(bf.toString(),16);
+					style.setProperty((byte)val, new Integer(intValue));
+				}
+				catch(NumberFormatException nfe)
+				{
+//					nfe.printStackTrace();
+				}  
+				break;
+			}
+			default:
+			{
+				StringBuffer bf=new StringBuffer(value);
+				bf.deleteCharAt(0);
+				try
+				{
+					int intValue=Integer.parseInt(bf.toString(),16);
+					style.setProperty((byte)val, new Integer(intValue));
+				}
+				catch(NumberFormatException nfe)
+				{
+//					nfe.printStackTrace();
 				}
 			}
+			}
+    		props.remove(property);
     	}
     	return style;
     }
@@ -796,11 +940,11 @@ public class Style
     {
     	ByteArrayOutputStream baos=new ByteArrayOutputStream();
     	DataOutputStream dos=new DataOutputStream(baos);
-    	for(int i=0;i<props.length;i++)
-    	{
-    		try
-    		{
-    			dos.writeByte(i);
+    	try
+		{
+    		for(int i=0;i<props.length;i++)
+        	{
+        		dos.writeByte(i);
     			if(props[i] instanceof Font)
     			{
     				dos.writeUTF(serializeFont((Font)props[i]));
@@ -813,24 +957,28 @@ public class Style
     			{
     				dos.writeUTF(props[i].toString());
     			}
-    		}
-    		catch(IOException ioe)
-    		{
-    			ioe.printStackTrace();
-    			return null;
-    		}
-    	}
+        	}
+        	dos.writeUTF(id);
+		}
+		catch(IOException ioe)
+		{
+//			ioe.printStackTrace();
+			return null;
+		}
     	return baos.toByteArray();
     }
     public Style loadFromByteStream(InputStream is)throws IOException
     {
-    	Style loaded=Style.getDefault();
+    	return loadFromByteStream(is, Style.getDefault());
+    }
+    public Style loadFromByteStream(InputStream is, Style loaded)throws IOException
+    {
     	DataInputStream dis=new DataInputStream(is);
-    	for(int i=0;i<props.length;i++)
-    	{
-    		try
-    		{
-    			byte index=dis.readByte();
+    	try
+		{
+    		for(int i=0;i<props.length;i++)
+        	{
+        		byte index=dis.readByte();
     			if(props[index] instanceof Integer)
     			{
     				loaded.setProperty(index, new Integer(Integer.parseInt(dis.readUTF())));
@@ -847,12 +995,21 @@ public class Style
     			{
     				loaded.setProperty(index, parseFont(dis.readUTF()));
     			}
-    		}
-    		catch(IOException ioe)
-    		{
-    			throw ioe;
-    		}
-    	}
+        	}
+        	loaded.setId(dis.readUTF());
+		}
+		catch(IOException ioe)
+		{
+			throw ioe;
+		}
     	return loaded;
     }
+
+	public void setId(String id) {
+		this.id = id;
+	}
+
+	public String getId() {
+		return id;
+	}
 }

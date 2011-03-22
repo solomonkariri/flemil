@@ -233,8 +233,6 @@ public class MenuItem implements Item
                                 Graphics.TOP|Graphics.LEFT);
                         
                     }
-                    g.setClip(clip.x, clip.y, clip.width, clip.height);
-                    //draw the popup image
                     break;
                 }
                 case MenuItem.TYPE_DOWN_SCROLL_ITEM:
@@ -291,8 +289,8 @@ public class MenuItem implements Item
                                 displayRect.y+1,
                                 Graphics.TOP|Graphics.LEFT);
                     }
-                    g.setClip(clip.x, clip.y, clip.width, clip.height);
                 }
+                g.setClip(clip.x, clip.y, clip.width, clip.height);
             }
         }
     }

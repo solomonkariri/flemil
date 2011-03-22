@@ -19,6 +19,8 @@ package org.flemil.ui;
 
 import javax.microedition.lcdui.Font;
 
+import org.flemil.event.TextItemListener;
+
 /**
  * Interface that represents an Item that contains text or that can be used to display text to the user
  * @author Solomon Kariri
@@ -134,4 +136,6 @@ public interface TextItem extends Item
 	
 	public boolean isTextChanged();
 	public void setTextChanged(boolean changed);
+	public void setTextListener(TextItemListener listener);
+	public TextItemListener getTextListener();
 }
