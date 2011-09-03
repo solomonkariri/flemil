@@ -1,0 +1,12 @@
+<body>
+<p>This package contains interfaces which should be implemented by classes that wisth to be
+notified when selected events occur on the items for which they are registered. The model 
+used for events in Flemil is that every item for which a listener can be added will have only 
+one listener registered and registered a new listener overwrites the one that had been set previously.
+As a performance and resource reservation practice it is recommended to use a single listener
+for a collection of elements of the same type, for example, MenuItems if its possible to uniquely 
+distinguish the items by a property they pocess, for example name or can the items by be acquired
+by reference. This will avoid having to initialize so may classes to listen for the events that
+can be more efficiently handled by one instance of the implementation of the class. Look at the 
+example that comes with this library for a sample of the use of this technique</p>
+</body>

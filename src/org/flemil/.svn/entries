@@ -1,0 +1,43 @@
+10
+
+dir
+6
+https://web10.crbafrica.com/svn/fam/trunk/Flemil/src/org/flemil
+https://web10.crbafrica.com/svn/fam
+
+
+
+2011-05-05T12:44:52.931375Z
+2
+ravi.vadgama
+
+
+svn:special svn:externals svn:needs-lock
+
+
+
+
+
+
+
+
+
+
+
+768ae678-6f79-5349-99ae-0cc13c221b49
+
+control
+dir
+
+event
+dir
+
+i18n
+dir
+
+ui
+dir
+
+util
+dir
+

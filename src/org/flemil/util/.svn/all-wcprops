@@ -1,0 +1,35 @@
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/fam/!svn/ver/2/trunk/Flemil/src/org/flemil/util
+END
+StringUtils.java
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/svn/fam/!svn/ver/20/trunk/Flemil/src/org/flemil/util/StringUtils.java
+END
+ImageFactory.java
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/svn/fam/!svn/ver/20/trunk/Flemil/src/org/flemil/util/ImageFactory.java
+END
+Rectangle.java
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/fam/!svn/ver/8/trunk/Flemil/src/org/flemil/util/Rectangle.java
+END
+package.html
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/fam/!svn/ver/8/trunk/Flemil/src/org/flemil/util/package.html
+END
+ResourcesFactory.java
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/svn/fam/!svn/ver/8/trunk/Flemil/src/org/flemil/util/ResourcesFactory.java
+END
