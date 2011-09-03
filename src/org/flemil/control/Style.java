@@ -318,6 +318,7 @@ public class Style
     public static Style getDefault()
     {
         Style style=new Style("-1");
+        style.setName("Default");
         style.setProperty(Style.COMPONENT_BACKGROUND, new Integer(0xffffff));
         style.setProperty(Style.COMPONENT_FOREGROUND, new Integer(0x000000));
         style.setProperty(Style.COMPONENT_FOCUS_BACKGROUND, new Integer(0xffeecc));
@@ -854,7 +855,7 @@ public class Style
     	StringBuffer bf=new StringBuffer(fontRep);
 		bf.deleteCharAt(0);
 		bf.deleteCharAt(bf.length()-1);
-		Vector strings=new Vector();
+	 Vector strings=new Vector();
 		int last=0;
 		for(int i=0;i<bf.length();i++)
 		{
@@ -1012,4 +1013,12 @@ public class Style
 	public String getId() {
 		return id;
 	}
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public String getName() {
+		return name;
+	}
+	private String name;
 }

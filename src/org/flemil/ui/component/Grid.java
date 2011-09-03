@@ -62,8 +62,7 @@ public class Grid implements Container
 				currentItem.focusGained();
 			}
 			if(displayRect.width>1 && parent instanceof Scrollable)
-		        ((Scrollable)parent).scrollRectToVisible(items[currentRow][currentCol].getDisplayRect(),
-		        		Scrollable.DIRECTION_X|Scrollable.DIRECTION_Y);
+		        ((Scrollable)parent).scrollRectToVisible(items[currentRow][currentCol].getDisplayRect());
 			break;
 		}
 		case Grid.COL_SELECTION:
@@ -84,8 +83,7 @@ public class Grid implements Container
 		        ((Scrollable)parent).scrollRectToVisible(
 		        		new Rectangle(curX,displayRect.y , 
 		        				(distrib[currentCol]*(displayRect.height-items[0].length-2))/100, 
-		        				displayRect.height),
-		        		Scrollable.DIRECTION_X|Scrollable.DIRECTION_Y);
+		        				displayRect.height));
 			break;
 		}
 		case Grid.ROW_SELECTION:
@@ -100,8 +98,7 @@ public class Grid implements Container
 			if(displayRect.width>1 && parent instanceof Scrollable)
 		        ((Scrollable)parent).scrollRectToVisible(
 		        		new Rectangle(displayRect.x,displayRect.y+(rowHei*currentRow) ,
-		        				displayRect.width,rowHei),
-		        		Scrollable.DIRECTION_X|Scrollable.DIRECTION_Y);
+		        				displayRect.width,rowHei));
 		}
 		break;
 		}
@@ -319,6 +316,9 @@ public class Grid implements Container
 	public void add(Item item)
 	{
 		synchronized (this) {
+			if(item instanceof Panel){
+				((Panel)item).setVScrollable(false);
+			}
 			outer: for(int i=0;i<items.length;i++)
 			{
 				if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
@@ -780,8 +780,7 @@ public class Grid implements Container
 			{
 				items[currentRow][currentCol].focusGained();
 				if(displayRect.width>1)
-		        	parentWindowPane.scrollRectToVisible(items[currentRow][currentCol].getDisplayRect(),
-			        		Scrollable.DIRECTION_X|Scrollable.DIRECTION_Y);
+		        	parentWindowPane.scrollRectToVisible(items[currentRow][currentCol].getDisplayRect());
 			}
 			break;
 		case Grid.COL_SELECTION:
@@ -801,8 +800,7 @@ public class Grid implements Container
 			if(displayRect.width>1 && parent instanceof Scrollable)
 	        	parentWindowPane.scrollRectToVisible(
 		        		new Rectangle(curX,displayRect.y , (distrib[currentCol]*displayRect.height)/100, 
-		        				displayRect.height),
-		        		Scrollable.DIRECTION_X|Scrollable.DIRECTION_Y);
+		        				displayRect.height));
 		}
 		case Grid.ROW_SELECTION:
 		{
@@ -816,8 +814,7 @@ public class Grid implements Container
 			if(displayRect.width>1)
 				parentWindowPane.scrollRectToVisible(
 		        		new Rectangle(displayRect.x,displayRect.y+(rowHei*currentRow) ,
-		        				displayRect.width,rowHei),
-		        		Scrollable.DIRECTION_X|Scrollable.DIRECTION_Y);
+		        				displayRect.width,rowHei));
 		}
 		}
 	}

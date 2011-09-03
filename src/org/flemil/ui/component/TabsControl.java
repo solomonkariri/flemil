@@ -201,6 +201,7 @@ public class TabsControl implements Item {
 	public void remove(Item item)
 	{
 		synchronized (this) {
+			item.setParent(null);
 			boolean changed=false;
 			if(item==currentItem)
 	    	{
@@ -256,10 +257,11 @@ public class TabsControl implements Item {
 				currentIndex=-1;
 				currentItem=null;
 			}
-			item.setParent(null);
 			if(changed && listener!=null){
 				listener.tabSelectionChanged(this);
 			}
+			tabItems.removeElement(item);
+			setRects.removeElement(item);
 		}
 		if(focussed && currentItem!=null){
 			currentItem.focusGained();
@@ -448,13 +450,12 @@ public class TabsControl implements Item {
 				currentItem=(Item)tabItems.elementAt(index-1);
 				currentTitle=titles.elementAt(index-1).toString();
 				setItemsRect(currentItem, true);
-				if(currentItem.isFocusible())currentItem.focusGained();
 				refreshScroller();
 				if(listener!=null){
 					listener.tabSelectionChanged(this);
 				}
 			}
-			if(focussed)
+			if(focussed && currentItem.isFocusible())
 			{
 				currentItem.focusGained();
 			}
@@ -523,21 +524,21 @@ public class TabsControl implements Item {
         		{
             		g.setColor(((Integer)GlobalControl.getControl().getStyle().
             				getProperty(Style.TAB_BACKGROUND)).intValue());
-            		g.fillRoundRect(displayRect.x+arrow.getWidth()+4+(i*availWid)/3,
-            				titlesRect.y+2, availWid/3-1, titlesRect.height+4, radius, radius);
+            		g.fillRoundRect(displayRect.x+arrow.getWidth()+4+(i*availWid)/5,
+            				titlesRect.y+2, availWid/5-1, titlesRect.height+4, radius, radius);
             		g.setColor(((Integer)GlobalControl.getControl().getStyle().
             				getProperty(Style.COMPONENT_OUTLINE_COLOR)).intValue());
-        			g.drawRoundRect(displayRect.x+arrow.getWidth()+3+(i*availWid)/3,
-        					titlesRect.y+1, availWid/3, titlesRect.height+4, radius, radius);
+        			g.drawRoundRect(displayRect.x+arrow.getWidth()+4+(i*availWid)/5,
+        					titlesRect.y+1, availWid/5, titlesRect.height+4, radius, radius);
             		g.setColor(((Integer)GlobalControl.getControl().getStyle().
             				getProperty(Style.TAB_FOREGROUND)).intValue());
             		g.setFont((Font)GlobalControl.getControl().getStyle().
     					getProperty(Style.TAB_FONT));
-            		g.setClip(displayRect.x+arrow.getWidth()+3+(i*availWid)/3,
-            				titlesRect.y+1, availWid/3, titlesRect.height+4);
+            		g.setClip(displayRect.x+arrow.getWidth()+3+(i*availWid)/5,
+            				titlesRect.y+1, availWid/5, titlesRect.height+4);
             		if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
             			g.drawString(titles.elementAt(currentIndex>=2?currentIndex-2+i:i).toString(),
-                				displayRect.x+arrow.getWidth()+4+(i*availWid)/3+1,
+                				displayRect.x+arrow.getWidth()+6+(i*availWid)/5,
                 				titlesRect.y+1, Graphics.TOP|Graphics.LEFT);
             		}
             		else{
@@ -545,7 +546,7 @@ public class TabsControl implements Item {
             			int titleWidth=((Font)GlobalControl.getControl().getStyle().
             					getProperty(Style.TAB_FONT)).stringWidth(title);
             			g.drawString(title,
-                				displayRect.x+arrow.getWidth()+4+(i*availWid)/3+1+availWid/3-titleWidth,
+                				displayRect.x+arrow.getWidth()+6+(i*availWid)/5+availWid/5-titleWidth,
                 				titlesRect.y+1, Graphics.TOP|Graphics.LEFT);
             		}
             		g.setClip(intersect2.x, intersect2.y, intersect2.width, intersect2.height);
@@ -554,21 +555,21 @@ public class TabsControl implements Item {
         		{
         			g.setColor(((Integer)GlobalControl.getControl().getStyle().
             				getProperty(Style.TAB_BACKGROUND)).intValue());
-            		g.fillRoundRect(displayRect.x+arrow.getWidth()+4+(i*availWid)/3,
-            				titlesRect.y+2, availWid/3-1, intersect2.height+4, radius,radius);
+            		g.fillRoundRect(displayRect.x+displayRect.width-arrow.getWidth()-2-((3-i)*availWid)/5,
+            				titlesRect.y+2, availWid/5, intersect2.height+4, radius,radius);
         			g.setColor(((Integer)GlobalControl.getControl().getStyle().
             				getProperty(Style.COMPONENT_OUTLINE_COLOR)).intValue());
-        			g.drawRoundRect(displayRect.x+arrow.getWidth()+3+(i*availWid)/3,
-            				titlesRect.y+1, availWid/3, intersect2.height+4, radius, radius);
+        			g.drawRoundRect(displayRect.x+displayRect.width-arrow.getWidth()-3-((3-i)*availWid)/5,
+            				titlesRect.y+1, availWid/5, intersect2.height+4, radius, radius);
             		g.setColor(((Integer)GlobalControl.getControl().getStyle().
             				getProperty(Style.TAB_FOREGROUND)).intValue());
             		g.setFont((Font)GlobalControl.getControl().getStyle().
     					getProperty(Style.TAB_FONT));
-            		g.setClip(displayRect.x+arrow.getWidth()+3+(i*availWid)/3,
-            				intersect2.y+1, availWid/3, intersect2.height+4);
+            		g.setClip(displayRect.x+displayRect.width-arrow.getWidth()-3-((3-i)*availWid)/5,
+            				intersect2.y+1, availWid/5, intersect2.height+4);
             		if(LocaleManager.getTextDirection()==LocaleManager.LTOR){
             			g.drawString(titles.elementAt(currentIndex>=2?currentIndex-2+i:i).toString(),
-                				displayRect.x+arrow.getWidth()+4+(i*availWid)/3+1,
+                				displayRect.x+displayRect.width-arrow.getWidth()-3-((3-i)*availWid)/5,
                 				titlesRect.y+1, Graphics.TOP|Graphics.LEFT);
             		}
             		else{
@@ -576,7 +577,7 @@ public class TabsControl implements Item {
             			int titleWidth=((Font)GlobalControl.getControl().getStyle().
             					getProperty(Style.TAB_FONT)).stringWidth(title);
             			g.drawString(title,
-                				displayRect.x+arrow.getWidth()+4+(i*availWid)/3+1+availWid/3-titleWidth,
+                				displayRect.x+displayRect.width-arrow.getWidth()-3-((3-i)*availWid)/5+availWid/5-titleWidth,
                 				titlesRect.y+1, Graphics.TOP|Graphics.LEFT);
             		}
             		g.setClip(intersect2.x, intersect2.y, intersect2.width, intersect2.height);
@@ -754,8 +755,8 @@ public class TabsControl implements Item {
 			int imgWidth=((Font)GlobalControl.getControl().getStyle().getProperty(
 					Style.WINDOW_TITLE_FONT)).stringWidth("M")+3;
 			int availWid=displayRect.width-imgWidth*2;
-			currentTitleRect=new Rectangle(displayRect.x+imgWidth+(drawIndex*availWid)/3,
-					displayRect.y,availWid/3,
+			currentTitleRect=new Rectangle(displayRect.x+imgWidth+(drawIndex*availWid)/5,
+					displayRect.y,(availWid*3)/5+2,
 					GlobalControl.getControl().getTitleBGround().getHeight()+4);
 			textWidth=((Font)GlobalControl.getControl().getStyle().
 					getProperty(Style.WINDOW_TITLE_FONT)).stringWidth(currentTitle)+2;
@@ -805,7 +806,7 @@ public class TabsControl implements Item {
 					,displayRect.width-2,
 					displayRect.height-unitHeight);
 			item.setDisplayRect(contentRect);
-			setRects.addElement(item);
+			if(!setRects.contains(item))setRects.addElement(item);
 		}
 		if(item.equals(currentItem)){
 			currentItem.focusGained();

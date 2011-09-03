@@ -14,6 +14,7 @@ import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Font;
 import javax.microedition.lcdui.Graphics;
 import javax.microedition.lcdui.TextBox;
+import javax.microedition.lcdui.Ticker;
 
 import org.flemil.control.GlobalControl;
 import org.flemil.control.Style;
@@ -56,6 +57,8 @@ public class TextField implements TextItem
 	private boolean fontSet;
 	private boolean textChanged;
 	private TextItemListener textListener;
+	private String prompt=null;
+	
 	public TextItemListener getTextListener() {
 		return textListener;
 	}
@@ -81,6 +84,11 @@ public class TextField implements TextItem
 		this.font=(Font)GlobalControl.getControl().getStyle().getProperty(
                 Style.ITEM_FONT);
 		textWidth=font.stringWidth(text)+2;
+	}
+	
+	public TextField(String prompt, String text, int maxSize, int properties){
+		this(text,maxSize,properties);
+		this.prompt=prompt;
 	}
 	
 	public boolean isTextWraps() {
@@ -147,7 +155,7 @@ public class TextField implements TextItem
 				splitIndecies.removeAllElements();
 				
 				if(textWraps){
-					Vector newLineSplits=new Vector();
+				 Vector newLineSplits=new Vector();
 					String temp=new String(text);
 					int index=temp.indexOf('\n');
 					while(index!=-1){
@@ -161,17 +169,17 @@ public class TextField implements TextItem
 					for(int i=0;i<newLineSplits.size();i++){
 						String current=newLineSplits.elementAt(i).toString();
 						int textWid=font.stringWidth(current);
-						if(textWid>=availWidth-2){ 
-							while(textWid>=availWidth-2){
+						if(textWid>=availWidth){ 
+							while(textWid>=availWidth){
 								int test=(current.length()*availWidth)/textWid;
 								while(test>current.length())test--;
 								String testString=current.substring(0, test);
-								while(font.stringWidth(testString)>=availWidth-2){
+								while(font.stringWidth(testString)>=availWidth){
 									test--;
 									testString=current.substring(0, test);
 								}
 								textWid=font.stringWidth(testString);
-								while(textWid<availWidth-2){
+								while(textWid<availWidth){
 									test++;
 									if(test>current.length())break;
 									testString=current.substring(0, test);
@@ -240,12 +248,15 @@ public class TextField implements TextItem
 	private void showTextBox() 
 	{
 		GlobalControl.getControl().setEditingText(true);
-		TextBox box=new TextBox(
-				LocaleManager.getTranslation("flemil.entertext"),text,maxSize,properties);
+		TextBox box=new TextBox(prompt==null?
+				LocaleManager.getTranslation("flemil.entertext"):prompt,text,maxSize,properties);
 		box.addCommand(new Command(
 				LocaleManager.getTranslation("flemil.ok"),Command.OK,1));
 		box.addCommand(new Command(
-				LocaleManager.getTranslation("flemil.cancel"),Command.SCREEN,1));
+				LocaleManager.getTranslation("flemil.cancel"),Command.CANCEL,1));
+		if(prompt!=null){
+			box.setTicker(new Ticker(prompt));
+		}
 		GlobalControl.getControl().getDisplay().setCurrent(box);
 		box.setCommandListener(new BoxListener());
 	}
@@ -566,7 +577,6 @@ public class TextField implements TextItem
 					TextField.this.setText(((TextBox)disp).getString());
 				}catch(IllegalArgumentException iae){
 				}
-				Runtime.getRuntime().gc();
 			}
 			else{
 				try
@@ -576,7 +586,6 @@ public class TextField implements TextItem
 							GlobalControl.getControl().getMainDisplayCanvas());
 				}catch(IllegalArgumentException iae){
 				}
-				Runtime.getRuntime().gc();
 			}
 			GlobalControl.getControl().setEditingText(false);
 		}

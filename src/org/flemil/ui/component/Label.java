@@ -30,7 +30,7 @@ public class Label implements TextItem
 	private boolean textWraps=true;
 	private byte alignment=LocaleManager.getTextDirection()==
 		LocaleManager.LTOR?TextItem.ALIGN_LEFT:TextItem.ALIGN_RIGHT;
-	Vector splitIndecies=new Vector();
+ Vector splitIndecies=new Vector();
 	private boolean focussed;
 	private boolean fontSet;
 	private int textIndent;
@@ -108,7 +108,7 @@ public class Label implements TextItem
 			splitIndecies.removeAllElements();
 			
 			if(textWraps){
-				Vector newLineSplits=new Vector();
+			 Vector newLineSplits=new Vector();
 				String temp=new String(text);
 				int index=temp.indexOf('\n');
 				while(index!=-1){
@@ -194,6 +194,12 @@ public class Label implements TextItem
         {
         	g.setClip(intersect.x, intersect.y, intersect.width, intersect.height);
         	g.setFont(font);
+        	if(focussed && !parent.isFocusible()){
+        		g.setColor(((Integer)GlobalControl.getControl().getStyle().
+    				getProperty(Style.COMPONENT_FOCUS_BACKGROUND)).intValue());
+        		g.fillRect(displayRect.x, displayRect.y, displayRect.width, 
+        				displayRect.height);
+        	}
         	g.setColor(focussed?((Integer)GlobalControl.getControl().getStyle().
     				getProperty(Style.COMPONENT_FOCUS_FOREGROUND)).intValue():
     					((Integer)GlobalControl.getControl().getStyle().

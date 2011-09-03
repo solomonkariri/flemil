@@ -124,7 +124,7 @@ public class RMSUtil {
 	}
 	public synchronized static Vector getSavedStyleNames()
 	{
-		Vector saved=new Vector();
+	 Vector saved=new Vector();
 		try {
 			RecordStore libStore=RecordStore.openRecordStore(RMSUtil.RMS_NAME, true,RecordStore.AUTHMODE_ANY,true);
 			int count=libStore.getNumRecords();

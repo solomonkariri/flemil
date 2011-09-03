@@ -144,8 +144,6 @@ public class ImageFactory
             int startOpacity, int endOpacity, int style,boolean shading,int curvature)
     {
         //Initialize the CRC table only if this method is invoked
-        //Free up memory fast
-        Runtime.getRuntime().gc();
         Image testImage=Image.createImage(width, height);
         Graphics g=testImage.getGraphics();
         g.setColor(0xff0000);
@@ -461,7 +459,6 @@ public class ImageFactory
         }
         //free the crc table from memory
         crcTable=null;
-        Runtime.getRuntime().gc();
         return data;
     }
     public synchronized int getCRC(byte []data,int start,int length)
@@ -490,7 +487,7 @@ public class ImageFactory
         }
         return crc^0xffffffff;
     }
-    public byte[]getByteArrayFromInt(int value)
+    public static byte[]getByteArrayFromInt(int value)
     {
         byte[] result=new byte[4];
         result[0]=(byte)(value>>>24);
@@ -499,6 +496,16 @@ public class ImageFactory
         result[3]=(byte)value;
         return result;
     }
+    
+    public static int getIntFromBytes(byte[] bytes){
+    	int value=0x00000000;
+		value|=(0x00000000|bytes[3])&0x000000ff;
+		value|=((0x00000000|bytes[2])<<8)&0x0000ffff;
+		value|=((0x00000000|bytes[1])<<16)&0x00ffffff;
+		value|=((0x00000000|bytes[0])<<24)&0xffffffff;
+		return value;
+    }
+    
     private int getAdler(byte[] data,int start,int length)
     {
         final int BASE=65521;

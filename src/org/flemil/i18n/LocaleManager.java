@@ -63,8 +63,8 @@ public class LocaleManager {
 			String value=currentTranslations.get(identifier).toString();
 			StringBuffer result=new StringBuffer();
 			int currentParam=0;
-			Vector values=new Vector();
-			Vector keys=new Vector();
+		 Vector values=new Vector();
+		 Vector keys=new Vector();
 			for(int i=0;i<value.length();i++){
 				if(value.charAt(i)!='\\'){
 					if(value.charAt(i)!='{'){

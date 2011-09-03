@@ -22,15 +22,6 @@ import org.flemil.util.Rectangle;
  */
 public class ScrollBar implements Item 
 {
-	/**
-	 * Denotes a horizontal ScrollBar
-	 */
-	public static final byte HORIZONTAL_ORIENTATION=1;
-	/**
-	 * Denotes a vertical ScrollBar
-	 */
-	public static final byte VERTICAL_ORIENTATION=2;
-	private byte orientation=ScrollBar.VERTICAL_ORIENTATION;
 	private int availableSize=1;
 	private int requiredSize=1;
 	private int currentPoint=0;
@@ -59,45 +50,28 @@ public class ScrollBar implements Item
 	 * @param orientation the Orientation of this ScrollBar which can be
 	 * either HORIZONTAL_ORIENTATION or VERTICAL_ORIENTATION
 	 */
-	public ScrollBar(int availableSize,int requiredSize,byte orientation) 
+	public ScrollBar(int availableSize,int requiredSize) 
 	{
 		setAvailableSize(availableSize);
 		setRequiredSize(requiredSize);
-		this.orientation=orientation;
 		displayRect=new Rectangle();
 	}
 	
 	private void initItemSizes()
 	{
 		synchronized (this) {
-			if(orientation==ScrollBar.VERTICAL_ORIENTATION)
+			knobSize=(availableSize*displayRect.height)/requiredSize;
+			if(knobSize<3)
 			{
-				knobSize=(availableSize*displayRect.height)/requiredSize;
-				if(knobSize<3)
-				{
-					knobSize=3;
-				}
-				else if(knobSize>displayRect.height)
-				{
-					knobSize=displayRect.height;
-				}
+				knobSize=3;
 			}
-			else
+			else if(knobSize>displayRect.height)
 			{
-				knobSize=(availableSize*displayRect.width)/requiredSize;
-				if(knobSize<3)
-				{
-					knobSize=3;
-				}
-				else if(knobSize>displayRect.width)
-				{
-					knobSize=displayRect.width;
-				}
+				knobSize=displayRect.height;
 			}
 			requiredSize+=(knobSize*requiredSize)/availableSize;
 			byte[] tmpStore=GlobalControl.getImageFactory().createTextureImageBytes(
-					knobSize, orientation==ScrollBar.VERTICAL_ORIENTATION?
-							displayRect.width:displayRect.height, 
+					knobSize, displayRect.width, 
 					((Integer)GlobalControl.getControl().getStyle().
 							getProperty(Style.SCROLLBAR_FOREGROUND)).intValue(), 
 							255, 255, ImageFactory.LIGHT_BEHIND, true,0);
@@ -147,32 +121,21 @@ public class ScrollBar implements Item
 	{
 		if(fgImage==null)return;
 		Rectangle intersect=null;
-        if((intersect=this.displayRect.calculateIntersection(clip))!=null)
-        {
-        	g.setClip(intersect.x, intersect.y, intersect.width, intersect.height);
-        	g.setColor(((Integer)GlobalControl.getControl().getStyle().
-    				getProperty(Style.SCROLLBAR_BACKGROUND)).intValue());
-        	if(orientation==VERTICAL_ORIENTATION)
-        	{
-        		g.fillRect(displayRect.x+(displayRect.width/2)-1, displayRect.y,
-        				2, displayRect.height);
-        		int knobCenter=(currentPoint*displayRect.height)/(requiredSize-availableSize);
-        		g.drawRegion(fgImage, 0,0,fgImage.getWidth(),fgImage.getHeight(),
-        				Sprite.TRANS_ROT90, 
-        				displayRect.x+1,
-        				displayRect.y+knobCenter,
-        				Graphics.TOP|Graphics.LEFT);
-        	}
-        	else
-        	{
-        		g.fillRect(displayRect.x, displayRect.y+(displayRect.height/2)-1,
-        				displayRect.width, 1);
-        		int knobCenter=(currentPoint*displayRect.width)/(requiredSize-availableSize);
-        		g.drawImage(fgImage, displayRect.x+knobCenter, 
-        				displayRect.y+1, Graphics.TOP|Graphics.LEFT);
-        	}
-            g.setClip(clip.x, clip.y, clip.width, clip.height);
-        }
+		if((intersect=this.displayRect.calculateIntersection(clip))!=null)
+		{
+			g.setClip(intersect.x, intersect.y, intersect.width, intersect.height);
+//			g.setColor(((Integer)GlobalControl.getControl().getStyle().
+//					getProperty(Style.SCROLLBAR_BACKGROUND)).intValue());
+//			g.fillRect(displayRect.x+(displayRect.width/2)-1, displayRect.y,
+//					2, displayRect.height);
+			int knobCenter=(currentPoint*displayRect.height)/(requiredSize-availableSize);
+			g.drawRegion(fgImage, 0,0,fgImage.getWidth(),fgImage.getHeight(),
+					Sprite.TRANS_ROT90, 
+					displayRect.x+1,
+					displayRect.y+knobCenter,
+					Graphics.TOP|Graphics.LEFT);
+			g.setClip(clip.x, clip.y, clip.width, clip.height);
+		}
 	}
 	public void pointerDraggedEvent(int x, int y) {
 		int knobTop=(currentPoint*displayRect.height)/(this.requiredSize-availableSize);
@@ -195,33 +158,31 @@ public class ScrollBar implements Item
 	public void pointerPressedEventReturned(int x, int y) {}
 	public void pointerReleasedEvent(int x, int y) {
 		if(displayRect.contains(x, y, 0)){
-			if(orientation==ScrollBar.VERTICAL_ORIENTATION){
-				int requiredSize=this.requiredSize-availableSize;
-				int knobTop=(currentPoint*displayRect.height)/(this.requiredSize-availableSize);
-				Rectangle knobRect=new Rectangle(displayRect.x, 
-						displayRect.y+knobTop, displayRect.width, 
-						knobSize);
-				if(knobRect.contains(x, y, 0)){
-					return;
-				}
-				else{
-					if(parent!=null && (parent instanceof Scrollable)){
-						int scrollablePanelDistance=(requiredSize-availableSize);
-						int scrollableBarDistance=displayRect.height-knobSize;
-						if(y<=displayRect.y+knobTop){
-							int topGap=y-displayRect.y;
-							int remainingTop=knobRect.y-displayRect.y;
-							int unscrolledTop=((remainingTop)*scrollablePanelDistance)/scrollableBarDistance;
-													int scrollHeight=((remainingTop-topGap)*unscrolledTop)/remainingTop+2;
-													((Scrollable)parent).scrollContentsVertically(scrollHeight);
-						}
-						else{
-							int bottomGap=displayRect.y+displayRect.height-y;
-							int remainingBottom=((displayRect.y+displayRect.height)-(knobRect.y+knobRect.height));
-							int unscrolledBottom=(remainingBottom*scrollablePanelDistance)/scrollableBarDistance;
-													int scrollHeight=((remainingBottom-bottomGap)*unscrolledBottom)/remainingBottom+2;
-													((Scrollable)parent).scrollContentsVertically(-scrollHeight);
-						}
+			int requiredSize=this.requiredSize-availableSize;
+			int knobTop=(currentPoint*displayRect.height)/(this.requiredSize-availableSize);
+			Rectangle knobRect=new Rectangle(displayRect.x, 
+					displayRect.y+knobTop, displayRect.width, 
+					knobSize);
+			if(knobRect.contains(x, y, 0)){
+				return;
+			}
+			else{
+				if(parent!=null && (parent instanceof Scrollable)){
+					int scrollablePanelDistance=(requiredSize-availableSize);
+					int scrollableBarDistance=displayRect.height-knobSize;
+					if(y<=displayRect.y+knobTop){
+						int topGap=y-displayRect.y;
+						int remainingTop=knobRect.y-displayRect.y;
+						int unscrolledTop=((remainingTop)*scrollablePanelDistance)/scrollableBarDistance;
+						int scrollHeight=((remainingTop-topGap)*unscrolledTop)/remainingTop+2;
+						((Scrollable)parent).scrollContentsVertically(scrollHeight);
+					}
+					else{
+						int bottomGap=displayRect.y+displayRect.height-y;
+						int remainingBottom=((displayRect.y+displayRect.height)-(knobRect.y+knobRect.height));
+						int unscrolledBottom=(remainingBottom*scrollablePanelDistance)/scrollableBarDistance;
+						int scrollHeight=((remainingBottom-bottomGap)*unscrolledBottom)/remainingBottom+2;
+						((Scrollable)parent).scrollContentsVertically(-scrollHeight);
 					}
 				}
 			}

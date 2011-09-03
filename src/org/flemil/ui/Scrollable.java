@@ -53,18 +53,8 @@ public interface Scrollable extends Container
 	 * Scrollable.DIRECTION_X for X scrolling only
 	 * or Scrollable.DIRECTION_Y|Scrollable.DIRECTION_X for both Y and X scrolling
 	 */
-	public void scrollRectToVisible(Rectangle rect, int scrollDirection);
-	/**
-	 * Tells whether this Scrollable can be or is allowed to do horizontal scrolling
-	 * @return true if allowed and false otherwise
-	 */
-	public boolean isHorScrolling();
-	/**
-	 * Sets whether this Scrollable is allowed to do horizontal scrolling.
-	 * @param horScrolling to allow horizontal scrolling and false therwise
-	 */
-	public void setHorScrolling(boolean horScrolling);
-	
+	public void scrollRectToVisible(Rectangle rect);
+	public boolean isVScrollable();
+	public void setVScrollable(boolean scrollable);
 	public void scrollContentsVertically(int change);
-	public void scrollContentsHorizontally(int change);
 }

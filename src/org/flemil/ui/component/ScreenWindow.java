@@ -3,6 +3,7 @@ package org.flemil.ui.component;
 import java.io.IOException;
 import java.util.Vector;
 
+import javax.microedition.lcdui.Canvas;
 import javax.microedition.lcdui.Font;
 import javax.microedition.lcdui.Graphics;
 import javax.microedition.lcdui.Image;
@@ -30,8 +31,10 @@ public class ScreenWindow implements Window
     public Panel getContentPane() {
 		return contentPane;
 	}
-	//Flag for full screen display of this item
-    private boolean fullScreen;
+    //whether to display menu bar
+    private boolean showMenuBar=true;
+    //whether to display title bar
+    private boolean showTitleBar=true;
     //This windows title
     private String title;
     //The available display rectangle
@@ -123,14 +126,17 @@ public class ScreenWindow implements Window
     {
     	if(keyCode==GlobalControl.getSoftKeys()[1] || keyCode==GlobalControl.getSoftKeys()[0])//this is the right soft key
     	{	
-    		if(fullScreen)
+    		if(!showMenuBar)
     		{
-    			setFullScreenMode(false);
+    			setShowMenuBar(true);
     		}
     		else
     		{
     			this.currentMenu.keyPressedEvent(keyCode);
     		}
+    	}
+    	else if(keyCode == Canvas.KEY_POUND){
+    		setShowTitleBar(!showTitleBar);
     	}
     	else if(this.currentMenu.isDisplaying())
     	{
@@ -145,7 +151,31 @@ public class ScreenWindow implements Window
     		contentPane.keyPressedEvent(keyCode);
     	}
     }
-    public void pointerPressedEventReturned(int x,int y)
+    private void setShowMenuBar(boolean b) {
+    	this.showMenuBar = b;
+    	if(!this.showMenuBar){
+    		if(isMenuDisplaying)
+        	{
+        		isMenuDisplaying=false;
+        		currentMenu.focusLost();
+        	}
+        	menuArrowRect=new Rectangle(getDisplayRect().x+getDisplayRect().width-20,
+        			getDisplayRect().y+getDisplayRect().height-10, 
+        			10, 10);
+        	if(arrowImage==null){
+        		try
+        		{
+        			arrowImage=GlobalControl.getImageFactory().scaleImage(Image.createImage("/arrow.png"), 10,
+        					10, Sprite.TRANS_ROT270);
+        		}catch(IOException ioe){
+//        			ioe.printStackTrace();
+        		}
+        	}
+    	}
+    	setDisplayRect(displayRect);
+    	repaint(displayRect);
+	}
+	public void pointerPressedEventReturned(int x,int y)
     {
         
     }
@@ -172,14 +202,21 @@ public class ScreenWindow implements Window
     		currentPopUp.pointerReleasedEvent(x, y);
     	}
     	else{
-    		if(!fullScreen && getMenuBarRect().contains(x, y, 0)){
+    		if(showMenuBar && getMenuBarRect().contains(x, y, 0)){
         		Rectangle testLeft=new Rectangle(menubarRect.x, menubarRect.y, 
         				menubarRect.width/2, menubarRect.height);
         		if(testLeft.contains(x, y, 0)){
-        			keyPressedEvent(GlobalControl.getSoftKeys()[0]);
+        			if(GlobalControl.isHasTwoSoftKeys()){
+        				keyPressedEvent(GlobalControl.getSoftKeys()[0]);
+        			}
+        			else{
+        				keyPressedEvent(GlobalControl.getSoftKeys()[1]);
+        			}
         		}
         		else{
-        			keyPressedEvent(GlobalControl.getSoftKeys()[1]);
+        			if(GlobalControl.isHasTwoSoftKeys()){
+        				keyPressedEvent(GlobalControl.getSoftKeys()[1]);
+        			}
         		}
         	}
         	else{
@@ -191,7 +228,7 @@ public class ScreenWindow implements Window
         				currentPopUp.pointerReleasedEvent(x, y);
         			}
         			else{
-        				if(fullScreen && menuArrowRect.contains(x,y,0)){
+        				if(!showMenuBar && menuArrowRect.contains(x,y,0)){
             				keyPressedEvent(GlobalControl.getSoftKeys()[1]);
             			}
             			else{
@@ -272,9 +309,8 @@ public class ScreenWindow implements Window
                         i,intersect.y, Graphics.TOP|Graphics.LEFT);
             }
         }
-        if(!fullScreen)
-        {
-        	if((intersect=clip.calculateIntersection(titlebarRect))!=null)
+        if(showTitleBar){
+    		if((intersect=clip.calculateIntersection(titlebarRect))!=null)
             {
             	g.setClip(intersect.x, intersect.y, intersect.width, intersect.height);
             	int imgWidth=GlobalControl.getControl().getTitleBGround().getWidth();
@@ -308,7 +344,9 @@ public class ScreenWindow implements Window
                             Graphics.TOP|Graphics.LEFT);
                 }
             }
-            if((intersect=clip.calculateIntersection(menubarRect))!=null)
+    	}
+    	if(showMenuBar){
+    		if((intersect=clip.calculateIntersection(menubarRect))!=null)
             {
             	g.setClip(intersect.x, intersect.y, intersect.width, intersect.height);
             	int imgWidth=GlobalControl.getControl().getMenuBarBGround().getWidth();
@@ -319,7 +357,7 @@ public class ScreenWindow implements Window
             				i, menubarRect.y, Graphics.TOP|Graphics.LEFT);
             	}
             }
-        }
+    	}
         g.setColor(((Integer)GlobalControl.getControl().getStyle().getProperty(Style.COMPONENT_OUTLINE_COLOR)).
                 intValue());
         g.drawRect(displayRect.x, displayRect.y, 
@@ -345,11 +383,11 @@ public class ScreenWindow implements Window
         	}
         	currentPopUp.paint(g, clip);
         }
-        if(!fullScreen && currentMenu!=null)
+        if(showMenuBar && currentMenu!=null)
         {
         	currentMenu.paint(g, clip);
         }
-        if(fullScreen){
+        if(!showMenuBar){
         	if(menuArrowRect.calculateIntersection(clip)!=null){
         		g.drawImage(arrowImage, menuArrowRect.x, menuArrowRect.y,
         				Graphics.TOP|Graphics.LEFT);
@@ -401,16 +439,16 @@ public class ScreenWindow implements Window
             bodyRect=new Rectangle();
             bodyRect.x=this.displayRect.x;
             bodyRect.width=this.displayRect.width;
-            if(fullScreen)
+            bodyRect.y=displayRect.y;
+            bodyRect.height=displayRect.height;
+            if(showTitleBar)
             {
-            	bodyRect.y=displayRect.y;
-            	bodyRect.height=displayRect.height;
+            	bodyRect.y+=titlebarRect.height;
+            	bodyRect.height-=titlebarRect.height;
             }
-            else
+            if(showMenuBar)
             {
-                bodyRect.y=titlebarRect.y+titlebarRect.height;
-                bodyRect.height=this.displayRect.height-
-                	(titlebarRect.height+menubarRect.height);
+            	bodyRect.height-=menubarRect.height;
             }
             setMenuRect(currentMenu);
             contentPane.setDisplayRect(bodyRect);
@@ -432,8 +470,13 @@ public class ScreenWindow implements Window
     private void setMenuRect(Menu menu){
     	//set the display rect for the menu
         Rectangle menuRect=new Rectangle();
-        menuRect.x=displayRect.x+
-        			displayRect.width/2;
+        if(GlobalControl.isHasTwoSoftKeys()){
+        	menuRect.x=displayRect.x+
+			displayRect.width/2;
+        }
+        else{
+        	menuRect.x=displayRect.x;
+        }
         menuRect.y=displayRect.y+
         			titlebarRect.height;
         menuRect.width=displayRect.width/2;
@@ -445,7 +488,7 @@ public class ScreenWindow implements Window
         //Display rect should always be after the draw start has been set to avoid conflicts 
 //        when calculating the rects for the menu items
         menu.setSpanRect(spanRect);
-        menu.setAlignment(Menu.ALIGN_RIGHT);
+//        menu.setAlignment(Menu.ALIGN_RIGHT);
         menu.setDrawStart(menuRect.y+menuRect.height);
         menu.setDisplayRect(menuRect);
     }
@@ -478,39 +521,23 @@ public class ScreenWindow implements Window
      */
     public void setFullScreenMode(boolean fullScreen)
     {
-    	if(this.fullScreen==fullScreen)return;
-    	this.fullScreen=fullScreen;
-        if(fullScreen)
-        {
-        	if(isMenuDisplaying)
-        	{
-        		isMenuDisplaying=false;
-        		currentMenu.focusLost();
-        	}
-        	menuArrowRect=new Rectangle(getDisplayRect().x+getDisplayRect().width-20,
-        			getDisplayRect().y+getDisplayRect().height-10, 
-        			10, 10);
-        	if(arrowImage==null){
-        		try
-        		{
-        			arrowImage=GlobalControl.getImageFactory().scaleImage(Image.createImage("/arrow.png"), 10,
-        					10, Sprite.TRANS_ROT270);
-        		}catch(IOException ioe){
-//        			ioe.printStackTrace();
-        			}
-        	}
-        }
-        setDisplayRect(displayRect);
-        repaint(displayRect);
+    	setShowMenuBar(!fullScreen);
+    	setShowTitleBar(!fullScreen);
     }
-    /**
+    private void setShowTitleBar(boolean b) {
+		this.showTitleBar = b;
+		setDisplayRect(displayRect);
+		repaint(displayRect);
+	}
+	/**
      * Checks whether this ScreenWindow is currently in fullscreen mode or not
      * @return true if this ScrennWindow is currently in fullscreen mode
      * and false otherwise
      */
     public boolean isFullScreenOn()
     {
-        return fullScreen;
+    	//demorgans theory
+        return !(showMenuBar || showTitleBar);
     }
     public Item getParent()
     {
@@ -577,7 +604,7 @@ public class ScreenWindow implements Window
                 {
                     Thread.sleep(100);
                 }catch(InterruptedException ie){}
-                if(fullScreen)
+                if(!showTitleBar)
                 {
                 	break;
                 }
@@ -612,22 +639,29 @@ public class ScreenWindow implements Window
     public void showPopUp(PopUpWindow window)
     {
     	synchronized (this) {
-    		if(window!=currentPopUp
-        			&& !popups.contains(window) && focussed)
+    		if(window!=currentPopUp && focussed)
         	{
-        		if(displayRect.width>2)
-        		if(currentPopUp!=null){
-        			currentPopUp.setParent(null);
-        			currentPopUp.focusLost();
+        		if(displayRect.width>2){
+        			if(currentPopUp!=null){
+            			currentPopUp.setParent(null);
+            			currentPopUp.focusLost();
+            		}
+        			if(popups.contains(window)){
+        				int index=popups.indexOf(window);
+        				Object tmp=popups.elementAt(popups.size()-1);
+        				popups.removeElement(window);
+        				popups.insertElementAt(tmp, index);
+        				popups.addElement(window);
+        			}
+            		window.setParent(this);
+            		currentPopUp=window;
+                	currentMenu=currentPopUp.getMenu();
+                	setMenuRect(currentMenu);
+                	popups.addElement(window);
         		}
-        		window.setParent(this);
-        		currentPopUp=window;
-            	currentMenu=currentPopUp.getMenu();
-            	setMenuRect(currentMenu);
-            	popups.addElement(window);
-            	//set the display rect for any popup showing
-                setCurrentPopupRect();
         	}
+    		//set the display rect for any popup showing
+        	setCurrentPopupRect();
 		}
     	repaint(displayRect);
     }
@@ -641,13 +675,14 @@ public class ScreenWindow implements Window
     	synchronized (this) {
     		if(popupWindow==null)return;
         	popups.removeElement(popupWindow);
+        	popupWindow.setParent(null);
+        	popupWindow.focusLost();
         	if(currentPopUp!=null && popupWindow==currentPopUp)
         	{
-        		currentPopUp.focusLost();
-        		currentPopUp.setParent(null);
             	if(!popups.isEmpty())
             	{
             		currentPopUp=(PopUpWindow)popups.elementAt(popups.size()-1);
+            		currentPopUp.setParent(this);
                 	currentMenu=currentPopUp.getMenu();
                 	setMenuRect(currentMenu);
                 	setCurrentPopupRect();
@@ -661,8 +696,8 @@ public class ScreenWindow implements Window
             		contentPane.focusGained();
             	}
         	}
-        	repaint(displayRect);
 		}
+    	repaint(displayRect);
     }
 	private void setCurrentPopupRect() {
 		if(currentPopUp!=null){

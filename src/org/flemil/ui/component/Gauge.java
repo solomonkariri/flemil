@@ -31,6 +31,7 @@ public class Gauge implements Item{
 	private int value;
 	private boolean autoscrolling;
 	private boolean animated;
+	private boolean showProgressLabel=true;
 	public static final int INDEFINITE=Integer.MIN_VALUE;
 	
 	/**
@@ -225,6 +226,22 @@ public class Gauge implements Item{
     			g.fillRoundRect(displayRect.x+ratio2+2, displayRect.y+1, 4, displayRect.height-2,
             			radius, radius);
     		}
+    		else{
+    			if(showProgressLabel && !animated){
+    				int percentage=(value*100)/max;
+    				String label=""+percentage+"%";
+    				g.setFont((Font)GlobalControl.getControl().getStyle().getProperty(
+    		                Style.ITEM_FONT));
+    				int stringWidth=g.getFont().stringWidth(label);
+    				int start=displayRect.x+displayRect.width/2-stringWidth/2;
+    				g.setColor(0x000000);
+    				g.drawString(label, start, displayRect.y+1, Graphics.TOP|Graphics.LEFT);
+    				g.setColor(0xffffff);
+    				g.drawString(label, start-1, displayRect.y+2, Graphics.TOP|Graphics.LEFT);
+    				g.setColor(0x000000);
+    				g.drawString(label, start-2, displayRect.y+1, Graphics.TOP|Graphics.LEFT);
+    			}
+    		}
     		g.setClip(clip.x, clip.y, clip.width, clip.height);
         }
 	}
@@ -297,6 +314,7 @@ public class Gauge implements Item{
 		int remainder=value%stepSize;
 		this.value = value+remainder;
 		repaint(displayRect);
+		if(listener!=null)listener.valueChanged(this);
 	}
 	public void setMaxValue(int maxValue)
 	{
@@ -342,5 +360,11 @@ public class Gauge implements Item{
 	public void moveRect(int dx, int dy) {
 		displayRect.x+=dx;
 		displayRect.y+=dy;
+	}
+	public void setShowProgressLabel(boolean showProgressLabel) {
+		this.showProgressLabel = showProgressLabel;
+	}
+	public boolean isShowProgressLabel() {
+		return showProgressLabel;
 	}
 }

@@ -82,30 +82,35 @@ public class List implements Container {
 	public void add(Item item)
 	{
 		synchronized (this) {
+			if(item instanceof Panel){
+				((Panel)item).setVScrollable(false);
+			}
 			elements.addElement(item);
 	    	if(currentItem==null){
 	    		currentItem=(Item)elements.elementAt(0);
+	    		currentIndex=0;
 	    	}
-	    	if(parent!=null)
-	    	item.setParent(this);
-	    	if(parentWindowPane!=null){
-	    		if(parentWindowPane.getParent() instanceof ScreenWindow){
-	    			((ScreenWindow)parentWindowPane.getParent()).setDisplayRect(
-	    					parentWindowPane.getParent().getDisplayRect());
-	    		}
-	    		else if(parentWindowPane.getParent() instanceof TabsControl){
-	    			((TabsControl)parentWindowPane.getParent()).refreshItemsRect(parentWindowPane);
-	    		}
-	    		else if(parentWindowPane.getParent() instanceof PopUpWindow){
-	    			ScreenWindow current=(ScreenWindow)parentWindowPane.getParent().getParent();
-	    			if(current!=null){
-	    				current.layoutCurrentPopup();
-	    			}
-	    		}
-	    	}
-	    	if(focussed && currentItem!=null && currentItem.getDisplayRect()!=null){
-	    		visualizeRect(currentItem.getDisplayRect());
-	    		currentItem.focusGained();
+	    	if(parent!=null){
+	    		item.setParent(this);
+		    	if(parentWindowPane!=null){
+		    		if(parentWindowPane.getParent() instanceof ScreenWindow){
+		    			((ScreenWindow)parentWindowPane.getParent()).setDisplayRect(
+		    					parentWindowPane.getParent().getDisplayRect());
+		    		}
+		    		else if(parentWindowPane.getParent() instanceof TabsControl){
+		    			((TabsControl)parentWindowPane.getParent()).refreshItemsRect(parentWindowPane);
+		    		}
+		    		else if(parentWindowPane.getParent() instanceof PopUpWindow){
+		    			ScreenWindow current=(ScreenWindow)parentWindowPane.getParent().getParent();
+		    			if(current!=null){
+		    				current.layoutCurrentPopup();
+		    			}
+		    		}
+		    	}
+		    	if(focussed && currentItem!=null && currentItem.getDisplayRect()!=null){
+		    		visualizeRect(currentItem.getDisplayRect());
+		    		currentItem.focusGained();
+		    	}
 	    	}
 		}
 	}
@@ -131,16 +136,18 @@ public class List implements Container {
 				if(index>0)
 				{
 					currentItem=((Item)elements.elementAt(index-1));
+					currentIndex=index-1;
 				}
 				else{
 					if(!elements.isEmpty()){
 						currentItem=((Item)elements.elementAt(0));
+						currentIndex=0;
 					}
 					else{
 						currentItem=null;
+						currentIndex=-1;
 					}
 				}
-				if(currentItem!=null && focussed)currentItem.focusGained();
 			}
 	    	elements.removeElement(item);
 	    	item.setParent(null);
@@ -160,6 +167,7 @@ public class List implements Container {
 	    		}
 	    	}
 		}
+		if(currentItem!=null && focussed)currentItem.focusGained();
     	repaint(displayRect);
 	}
 	public void removeAll()
@@ -334,7 +342,7 @@ public class List implements Container {
 			testItem=testItem.getParent();
 		}
 		if(testItem instanceof Scrollable){
-			((Scrollable)testItem).scrollRectToVisible(rect, Scrollable.DIRECTION_Y|Scrollable.DIRECTION_X);
+			((Scrollable)testItem).scrollRectToVisible(rect);
 		}
 	}
 	

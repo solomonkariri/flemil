@@ -23,13 +23,19 @@ import java.util.Calendar;
 import java.util.Vector;
 
 import javax.microedition.lcdui.Canvas;
+import javax.microedition.lcdui.Command;
+import javax.microedition.lcdui.CommandListener;
 import javax.microedition.lcdui.Display;
+import javax.microedition.lcdui.Displayable;
 import javax.microedition.lcdui.Font;
 import javax.microedition.lcdui.Graphics;
 import javax.microedition.lcdui.Image;
 import javax.microedition.lcdui.game.Sprite;
 import javax.microedition.midlet.MIDlet;
 
+
+
+import org.flemil.i18n.LocaleManager;
 import org.flemil.ui.component.ScreenWindow;
 import org.flemil.util.ImageFactory;
 import org.flemil.util.Rectangle;
@@ -67,11 +73,11 @@ public class GlobalControl
     //The main canvas used for drawing the whole application
     private Canvas mainCanvas;
     //The currently active component
-    private ScreenWindow currentWindow;
+    ScreenWindow currentWindow;
     //Image for double buffering
     private Image bufferImg;
     
-    private static int[] softKeys={-6,-7};
+    static int[] softKeys={-6,-7};
     
     private boolean editingText;
     /**
@@ -130,6 +136,8 @@ public class GlobalControl
     private static int itemTextScrollSpeed=3;
     //variable to manipulate scroll speeds of items in a panel
     private static int panelScrollSpeed=14;
+	private static boolean hasTwoSoftKeys=true;
+	public static boolean isBB;
     
     //variable for whether fading is enabled
     private boolean fading;
@@ -158,6 +166,7 @@ public class GlobalControl
         initBGrounds();
         initControlsBGrounds();
         inited=true;
+        panelScrollSpeed=((Font)globalStyle.getProperty(Style.ITEM_FONT)).getHeight();
     }
     /**
      * Creates a new GlobalControl for the given MIDlet having a default style
@@ -209,9 +218,27 @@ public class GlobalControl
     	if(System.getProperty("com.mot.carrier.URL")!=null){
     		softKeys=new int[]{-21,-22};
     	}
+    	//check whether we are using a blackberry
+    	String platform=System.getProperty("microedition.platform");
+    	if(platform!=null && 
+    			(platform.toLowerCase().indexOf("blackberry")!=-1
+    					||
+    					platform.toLowerCase().indexOf("rim")!=-1)){
+    		hasTwoSoftKeys=false;
+    		isBB=true;
+    		try {
+				new BBKeysListener();
+			} catch (Throwable e) {
+				e.printStackTrace();
+			}
+    	}
+    	
         control=new GlobalControl(midlet, style);
     }
-    /**
+	public static boolean isHasTwoSoftKeys() {
+		return hasTwoSoftKeys;
+	}
+	/**
      * * Called to initialize and setup variables in this GlobalControl instance so
      * that the application can be able to make use of most the Flemil library components.
      * This method should be the first call in an application. No calls to any other 
@@ -471,6 +498,7 @@ public class GlobalControl
     public void setStyle(Style style)
     {
         globalStyle=style;
+        panelScrollSpeed=((Font)globalStyle.getProperty(Style.ITEM_FONT)).getHeight();
         refreshStyle();
     }
     /**
@@ -539,7 +567,7 @@ public class GlobalControl
     {
         return mainCanvas.getHeight();
     }
-    private void paint(Graphics g)
+    void paint(Graphics g)
     {
 		Rectangle currentClip=new Rectangle();
     	if(layout==LANDSCAPE_LAYOUT)
@@ -559,8 +587,6 @@ public class GlobalControl
     			currentClip.height=displayArea.height;
     		}
     	}
-    	//Clean up memory first
-    	Runtime.getRuntime().gc();
     	//Draw on the offs screen image
     	//paint the image on graphics accordingly
     	Graphics gImg=bufferImg.getGraphics();
@@ -589,16 +615,12 @@ public class GlobalControl
     	}catch(IllegalArgumentException iae){
 //    		iae.printStackTrace();
     	}
-    	//Clean up memory after
-    	Runtime.getRuntime().gc();
     }
     public void setDisplayedWindow(ScreenWindow window){
     	//Send a focus lost signal to the current component if any
         if(currentWindow!=null)
         {
             currentWindow.focusLost();
-            //Clean up any previously used memory
-            Runtime.getRuntime().gc();
         }
         currentWindow=window;
     	currentWindow.focusGained();
@@ -622,8 +644,6 @@ public class GlobalControl
         if(currentWindow!=null)
         {
             currentWindow.focusLost();
-            //Clean up any previously used memory
-            Runtime.getRuntime().gc();
         }
         if(display.getCurrent()!=mainCanvas){
         	display.setCurrent(mainCanvas);
@@ -678,6 +698,7 @@ public class GlobalControl
     }
     public void keyPressedEvent(int keyCode)
     {
+    	if(refreshingStyle)return;
         if(layout==LANDSCAPE_LAYOUT)
         {
             if(currentWindow!=null)
@@ -745,6 +766,7 @@ public class GlobalControl
     }
     public void pointerPressedEvent(int x,int y)
     {
+    	if(refreshingStyle)return;
         if(layout==LANDSCAPE_LAYOUT)
         {
             int tmp=x;
@@ -758,6 +780,7 @@ public class GlobalControl
     }
     public void pointerReleasedEvent(int x,int y)
     {
+    	if(refreshingStyle)return;
     	if(layout==LANDSCAPE_LAYOUT)
         {
             int tmp=x;
@@ -771,6 +794,7 @@ public class GlobalControl
     }
     public void pointerDraggedEvent(int x,int y)
     {
+    	if(refreshingStyle)return;
     	if(layout==LANDSCAPE_LAYOUT)
         {
             int tmp=x;
@@ -829,8 +853,6 @@ public class GlobalControl
                 currentWindow.setDisplayRect(windowRect);
         	}
         }
-        //Clean up any previously used memory
-        Runtime.getRuntime().gc();
         settingLayout=false;
         if(switched){
         	new Thread(new Runnable() {
@@ -926,7 +948,6 @@ public class GlobalControl
 		else
 		{
 			fadeImage=null;
-			Runtime.getRuntime().gc();
 		}
 	}
 	/**
@@ -949,6 +970,7 @@ public class GlobalControl
     	bufferImg=Image.createImage(displayArea.width, displayArea.height);
     	refreshLayout();
 	}
+	
 	public class MainCanvas extends Canvas
     {
         public MainCanvas()
@@ -972,9 +994,9 @@ public class GlobalControl
         }
         public void keyRepeated(int keyCode)
         {
+        	if(refreshingStyle)return;
         	if(getGameAction(keyCode)==Canvas.FIRE)
         	{
-        		Runtime.getRuntime().gc();
         	}
         	else
         	{

@@ -42,9 +42,9 @@ public class Menu implements Item
     //The currently highlighted MenuItem
     private MenuItem currentItem;
     //The Left selection default Item
-    private MenuItem leftItem;
+    private MenuItem cancelItem;
     //The right selection default item
-    private MenuItem rightItem;
+    private MenuItem okItem;
     //The rect available for this menus display
     private Rectangle displayRect;
     //Variable to keep track of whether the menu is displayed
@@ -107,7 +107,7 @@ public class Menu implements Item
     public Menu(String name)
     {
         this.name=name;
-        //Initialize the entries vector
+        //Initialize the entries Vector
         this.entries=new Vector();
         //Initialize the mappings table
         this.mappings=new Hashtable();
@@ -139,27 +139,27 @@ public class Menu implements Item
         	if(parent!=null && parent instanceof Window)
         	{
         		//first we  move the left and right items back to the list
-        		if(rightItem!=null && !entries.contains(rightItem))
+        		if(okItem!=null && !entries.contains(okItem))
         		{
         			//we set the alignment for the sub menu back to default
-        			if(rightItem.getType()==MenuItem.TYPE_POPUP_ITEM)
+        			if(okItem.getType()==MenuItem.TYPE_POPUP_ITEM)
         			{
         				switch (this.alignment) {
     					case Menu.ALIGN_LEFT:
-    						((Menu)mappings.get(rightItem)).setAlignment(Menu.ALIGN_RIGHT);		
+    						((Menu)mappings.get(okItem)).setAlignment(Menu.ALIGN_RIGHT);		
     						break;
     					case Menu.ALIGN_RIGHT:
-    						((Menu)mappings.get(rightItem)).setAlignment(Menu.ALIGN_LEFT);		
+    						((Menu)mappings.get(okItem)).setAlignment(Menu.ALIGN_LEFT);		
     						break;
     					}
         			}
-        			entries.addElement(rightItem);
-        			rightItem=null;
+        			entries.addElement(okItem);
+        			okItem=null;
         		}
-        		if(leftItem!=null && !entries.contains(leftItem))
+        		if(cancelItem!=null && !entries.contains(cancelItem))
         		{
-        			entries.addElement(leftItem);
-        			leftItem=null;
+        			entries.addElement(cancelItem);
+        			cancelItem=null;
         		}
         		//if the menu is displaying then we add the select and cancel options and make them the right
         		//and left items respectively
@@ -171,63 +171,65 @@ public class Menu implements Item
             			if(((MenuItem)entries.elementAt(1)).getType()==MenuItem.TYPE_POPUP_ITEM &&
             					((MenuItem)entries.elementAt(0)).getType()==MenuItem.TYPE_POPUP_ITEM)
             			{
-            				leftItem=null;
-            				rightItem=null;
+            				cancelItem=null;
+            				okItem=null;
             			}
             			//else we put the pop up item to the right of the menu and give it the fake main menu property
             			else
             			{
-            				if(GlobalControl.getControl().getLayout()==GlobalControl.PORTRAIT_LAYOUT)
+            				if(GlobalControl.getControl().getLayout()==GlobalControl.PORTRAIT_LAYOUT &&
+            						GlobalControl.isHasTwoSoftKeys())
             				{
             					if(((MenuItem)entries.elementAt(1)).getType()==MenuItem.TYPE_POPUP_ITEM)
                 				{
-                					leftItem=(MenuItem)entries.elementAt(0);
-                					rightItem=(MenuItem)entries.elementAt(1);
-                					entries.removeElement(rightItem);
-                					entries.removeElement(leftItem);
-                					((Menu)mappings.get(rightItem)).setAlignment(this.alignment);
+                					cancelItem=(MenuItem)entries.elementAt(0);
+                					okItem=(MenuItem)entries.elementAt(1);
+                					entries.removeElement(okItem);
+                					entries.removeElement(cancelItem);
+                					((Menu)mappings.get(okItem)).setAlignment(this.alignment);
                 				}
                 				else if(((MenuItem)entries.elementAt(0)).getType()==MenuItem.TYPE_POPUP_ITEM)
                 				{
-                					leftItem=(MenuItem)entries.elementAt(1);
-                					rightItem=(MenuItem)entries.elementAt(0);
-                					entries.removeElement(rightItem);
-                					entries.removeElement(leftItem);
+                					cancelItem=(MenuItem)entries.elementAt(1);
+                					okItem=(MenuItem)entries.elementAt(0);
+                					entries.removeElement(okItem);
+                					entries.removeElement(cancelItem);
                 				}
                 				else
                 				{
-                					leftItem=(MenuItem)entries.elementAt(1);
-                					rightItem=(MenuItem)entries.elementAt(0);
-                					entries.removeElement(rightItem);
-                					entries.removeElement(leftItem);
+                					cancelItem=(MenuItem)entries.elementAt(1);
+                					okItem=(MenuItem)entries.elementAt(0);
+                					entries.removeElement(okItem);
+                					entries.removeElement(cancelItem);
                 				}
             				}
             			}
         			}
-        			else if(entries.size()==1)
+        			else if(entries.size()==1 && !GlobalControl.isBB)
         			{
-        				rightItem=(MenuItem)entries.elementAt(0);
-    					entries.removeElement(rightItem);
-    					currentItem=rightItem;
+        				okItem=(MenuItem)entries.elementAt(0);
+    					entries.removeElement(okItem);
+    					currentItem=okItem;
         			}
         		}
         		//if there are more than two items then we set the topmost non popup item as the left item
         		else
         		{
-        			if(GlobalControl.getControl().getLayout()==GlobalControl.PORTRAIT_LAYOUT)
+        			if(GlobalControl.getControl().getLayout()==GlobalControl.PORTRAIT_LAYOUT &&
+        					GlobalControl.isHasTwoSoftKeys())
         			{
         				for(int i=entries.size()-1;i>=0;i--)
             			{
             				if(((MenuItem)entries.elementAt(i)).getType()!=MenuItem.TYPE_POPUP_ITEM)
             				{
             					//we set it as the left and remove it from the items list
-            					leftItem=(MenuItem)entries.elementAt(i);
-            					entries.removeElement(leftItem);
+            					cancelItem=(MenuItem)entries.elementAt(i);
+            					entries.removeElement(cancelItem);
             					break;
             				}
             			}
         			}
-        			rightItem=null;
+        			okItem=null;
         		}
         	}
 		}
@@ -235,6 +237,11 @@ public class Menu implements Item
     public void setParent(Item parent)
     {
         this.parent=parent;
+        if(parent!=null && parent instanceof Window){
+        	if(!GlobalControl.isHasTwoSoftKeys()){
+        		alignment=Menu.ALIGN_LEFT;
+        	}
+        }
         try {
 			for(int i=0;i<entries.size();i++){
 				MenuItem itm=(MenuItem)entries.elementAt(i);
@@ -275,15 +282,15 @@ public class Menu implements Item
     public void remove(MenuItem item)
     {
 		//first we move the left and right items back to entries
-    	if(rightItem!=null)
+    	if(okItem!=null)
     	{
-    		entries.addElement(rightItem);
-    		rightItem=null;
+    		entries.addElement(okItem);
+    		okItem=null;
     	}
-    	if(leftItem!=null)
+    	if(cancelItem!=null)
     	{
-    		entries.addElement(leftItem);
-    		leftItem=null;
+    		entries.addElement(cancelItem);
+    		cancelItem=null;
     	}
     	//remove the item and then reorganize the items
         entries.removeElement(item);
@@ -316,8 +323,8 @@ public class Menu implements Item
     		currentItem=null;
     	}
     	entries.removeAllElements();
-    	leftItem=null;
-    	rightItem=null;
+    	cancelItem=null;
+    	okItem=null;
         organizeItems();
         //make the topmost item currently focused and visible
         scrollToTop();
@@ -343,15 +350,15 @@ public class Menu implements Item
     public void remove(Menu menu)
     {
     	//first we move the left and right items back to entries
-    	if(rightItem!=null)
+    	if(okItem!=null)
     	{
-    		entries.addElement(rightItem);
-    		rightItem=null;
+    		entries.addElement(okItem);
+    		okItem=null;
     	}
-    	if(leftItem!=null)
+    	if(cancelItem!=null)
     	{
-    		entries.addElement(leftItem);
-    		leftItem=null;
+    		entries.addElement(cancelItem);
+    		cancelItem=null;
     	}
     	//A menu can only have a mapping and in the entries
         Enumeration en=mappings.keys();
@@ -395,15 +402,15 @@ public class Menu implements Item
         				"to a menu before setting the parent menus parent");
         	}
         	//first we move the left and right items back to entries
-        	if(rightItem!=null)
+        	if(okItem!=null)
         	{
-        		entries.addElement(rightItem);
-        		rightItem=null;
+        		entries.addElement(okItem);
+        		okItem=null;
         	}
-        	if(leftItem!=null)
+        	if(cancelItem!=null)
         	{
-        		entries.addElement(leftItem);
-        		leftItem=null;
+        		entries.addElement(cancelItem);
+        		cancelItem=null;
         	}
         	if(parent!=null)
             menu.setParent(this);
@@ -455,15 +462,15 @@ public class Menu implements Item
     			throw new IllegalArgumentException("You cannot have a menu item with the same name as the menu for the main window");
     		}
     		//first we move the left and right items back to entries
-    		if(rightItem!=null)
+    		if(okItem!=null)
     		{
-    			entries.addElement(rightItem);
-    			rightItem=null;
+    			entries.addElement(okItem);
+    			okItem=null;
     		}
-    		if(leftItem!=null)
+    		if(cancelItem!=null)
     		{
-    			entries.addElement(leftItem);
-    			leftItem=null;
+    			entries.addElement(cancelItem);
+    			cancelItem=null;
     		}
     		if(parent!=null)
     		item.setParent(this);
@@ -954,25 +961,25 @@ public class Menu implements Item
     			if(!isDisplaying())
     			{
     				//draw the left item if any is available
-        			if(leftItem!=null)
+        			if(cancelItem!=null)
         			{
         				g.setClip(barRect.x, barRect.y, barRect.width/2, barRect.height);
-        				g.drawString(leftItem.getName(), barRect.x+1, barRect.y+1, Graphics.TOP|Graphics.LEFT);
+        				g.drawString(cancelItem.getName(), barRect.x+1, barRect.y+1, Graphics.TOP|Graphics.LEFT);
         			}
-        			if(rightItem!=null)
+        			if(okItem!=null)
         			{
         				int wid=((Font)GlobalControl.getControl().getStyle().getProperty(Style.MENU_BAR_FONT))
-        				.stringWidth(rightItem.getName());
+        				.stringWidth(okItem.getName());
         				int diff=wid-barRect.width/2-3;
         				g.setClip(barRect.x+barRect.width/2+2, barRect.y, barRect.width/2, barRect.height);
         				if(diff>0)
         				{
-        					g.drawString(rightItem.getName(), barRect.x+barRect.width/2+2, 
+        					g.drawString(okItem.getName(), barRect.x+barRect.width/2+2, 
         							barRect.y+1, Graphics.TOP|Graphics.LEFT);
         				}
         				else
         				{
-        					g.drawString(rightItem.getName(), barRect.x+barRect.width-2-wid, 
+        					g.drawString(okItem.getName(), barRect.x+barRect.width-2-wid, 
         							barRect.y+1, Graphics.TOP|Graphics.LEFT);
         				}
         			}
@@ -980,44 +987,60 @@ public class Menu implements Item
         			//menu string on the right
         			else if(!entries.isEmpty())
         			{
-        				int wid=((Font)GlobalControl.getControl().getStyle().getProperty(Style.MENU_BAR_FONT))
-        				.stringWidth(this.name);
-        				int diff=wid-barRect.width/2-3;
-        				g.setClip(barRect.x+barRect.width/2+2, barRect.y, barRect.width/2, barRect.height);
-        				if(diff>0)
-        				{
-        					g.drawString(this.name, barRect.x+barRect.width/2+2, 
-        							barRect.y+1, Graphics.TOP|Graphics.LEFT);
-        				}
-        				else
-        				{
-        					g.drawString(this.name, barRect.x+barRect.width-2-wid, 
-        							barRect.y+1, Graphics.TOP|Graphics.LEFT);
+        				if(GlobalControl.isHasTwoSoftKeys()){
+        					int wid=((Font)GlobalControl.getControl().getStyle().getProperty(Style.MENU_BAR_FONT))
+            				.stringWidth(this.name);
+            				int diff=wid-barRect.width/2-3;
+            				g.setClip(barRect.x+barRect.width/2+2, barRect.y, barRect.width/2, barRect.height);
+            				if(diff>0)
+            				{
+            					g.drawString(this.name, barRect.x+barRect.width/2+2, 
+            							barRect.y+1, Graphics.TOP|Graphics.LEFT);
+            				}
+            				else
+            				{
+            					g.drawString(this.name, barRect.x+barRect.width-2-wid, 
+            							barRect.y+1, Graphics.TOP|Graphics.LEFT);
+            				}
+        				}else{
+        					g.setClip(barRect.x, barRect.y, barRect.width/2, barRect.height);
+            				g.drawString(this.name, barRect.x+1, barRect.y+1, Graphics.TOP|Graphics.LEFT);
         				}
         			}
     			}
     			else
     			{
-    				if(GlobalControl.getControl().getLayout()==GlobalControl.PORTRAIT_LAYOUT)
+    				if(GlobalControl.getControl().getLayout()==GlobalControl.PORTRAIT_LAYOUT
+    						&& GlobalControl.isHasTwoSoftKeys())
     				{
     					g.setClip(barRect.x, barRect.y, barRect.width/2, barRect.height);
         				g.drawString(LocaleManager.getTranslation("flemil.cancel"),
         						barRect.x+1, barRect.y+1, Graphics.TOP|Graphics.LEFT);
     				}
-    				int wid=((Font)GlobalControl.getControl().getStyle().getProperty(Style.MENU_BAR_FONT))
-    				.stringWidth(LocaleManager.getTranslation("flemil.select"));
-    				int diff=wid-barRect.width/2-3;
-    				g.setClip(barRect.x+barRect.width/2+2, barRect.y, barRect.width/2, barRect.height);
-    				if(diff>0)
-    				{
-    					g.drawString(LocaleManager.getTranslation("flemil.select"), barRect.x+barRect.width/2+2, 
-    							barRect.y+1, Graphics.TOP|Graphics.LEFT);
+    				String menuname=LocaleManager.getTranslation("flemil.select");
+    				if(!GlobalControl.isHasTwoSoftKeys()){
+    					menuname=LocaleManager.getTranslation("flemil.options");
     				}
-    				else
-    				{
-    					g.drawString(LocaleManager.getTranslation("flemil.select"),
-    							barRect.x+barRect.width-2-wid, 
-    							barRect.y+1, Graphics.TOP|Graphics.LEFT);
+    				if(GlobalControl.isHasTwoSoftKeys()){
+    					int wid=((Font)GlobalControl.getControl().getStyle().getProperty(Style.MENU_BAR_FONT))
+        				.stringWidth(menuname);
+        				int diff=wid-barRect.width/2-3;
+        				g.setClip(barRect.x+barRect.width/2+2, barRect.y, barRect.width/2, barRect.height);
+        				if(diff>0)
+        				{
+        					g.drawString(menuname, barRect.x+barRect.width/2+2, 
+        							barRect.y+1, Graphics.TOP|Graphics.LEFT);
+        				}
+        				else
+        				{
+        					g.drawString(menuname,
+        							barRect.x+barRect.width-2-wid, 
+        							barRect.y+1, Graphics.TOP|Graphics.LEFT);
+        				}
+    				}
+    				else{
+    					g.setClip(barRect.x, barRect.y, barRect.width/2, barRect.height);
+        				g.drawString(menuname, barRect.x+1, barRect.y+1, Graphics.TOP|Graphics.LEFT);
     				}
     			}
     			if(GlobalControl.getControl().isShowTime()){
@@ -1041,7 +1064,7 @@ public class Menu implements Item
     		}
     		if(GlobalControl.getControl().getLayout()==GlobalControl.LANDSCAPE_LAYOUT)
     		{
-    			if(isDisplaying())
+    			if(isDisplaying() && GlobalControl.isHasTwoSoftKeys())
     			{
     				Rectangle cancItemRect=new Rectangle();
         			cancItemRect.x=GlobalControl.getControl().getDisplayArea().x; 
@@ -1220,10 +1243,10 @@ public class Menu implements Item
     	if(keyCode==GlobalControl.getSoftKeys()[1])//this is the right soft key
     	{	
     		if(entries.isEmpty()){
-    			if(rightItem!=null){
-    				if(rightItem!=null && rightItem.getListener()!=null)
+    			if(okItem!=null){
+    				if(okItem!=null && okItem.getListener()!=null)
         			{
-        				rightItem.getListener().commandAction(rightItem);
+        				okItem.getListener().commandAction(okItem);
         			}
     			}
     			return;
@@ -1231,7 +1254,7 @@ public class Menu implements Item
     		if(!displaying)
     		{
     			focusGained();
-    			if(rightItem!=null && rightItem.getName()
+    			if(okItem!=null && okItem.getName()
     					!=LocaleManager.getTranslation("flemil.options"))
     			{
     				keyPressedEvent(GlobalControl.getControl().getMainDisplayCanvas().getKeyCode(
@@ -1240,8 +1263,22 @@ public class Menu implements Item
     		}
     		else
     		{
-    			keyPressedEvent(GlobalControl.getControl().getMainDisplayCanvas().getKeyCode(
-    					Canvas.FIRE));
+    			if(!GlobalControl.isBB){
+    				keyPressedEvent(GlobalControl.getControl().getMainDisplayCanvas().getKeyCode(
+        					Canvas.FIRE));
+    			}
+    			else{
+    				if(parent instanceof Menu){
+    					focusLost();
+                        ((Menu)parent).activeSubmenu=null;
+    					parent.keyPressedEvent(keyCode);
+    				}
+    				else{
+    					focusLost();
+    					displaying=false;
+    					repaint(parent.getDisplayRect());
+    				}
+    			}
     		}
     		if(parent instanceof Window)
     		{
@@ -1269,7 +1306,7 @@ public class Menu implements Item
     				((Menu)parent).activeSubmenu=null;
     				repaint(parent.getDisplayRect());
     			}
-    			if(parent instanceof Window)
+    			else if(parent instanceof Window)
         		{
         			repaint(((Window)parent).getMenuBarRect());
         			repaint(currentView);
@@ -1287,9 +1324,9 @@ public class Menu implements Item
     		}
     		else
     		{
-    			if(leftItem!=null && leftItem.getListener()!=null)
+    			if(cancelItem!=null && cancelItem.getListener()!=null)
     			{
-    				leftItem.getListener().commandAction(leftItem);
+    				cancelItem.getListener().commandAction(cancelItem);
     			}
     			return;
     		}

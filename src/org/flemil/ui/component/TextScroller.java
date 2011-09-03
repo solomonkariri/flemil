@@ -37,7 +37,7 @@ public class TextScroller implements Runnable{
         	int diff=textItem.getTextWidth()-textItem.getDisplayRect().width+2;
         	if(textItem.isTextChanged())
         	{
-        		textItem.setTextIndent(0);
+//        		textItem.setTextIndent(0);
         		if(diff<=0)
         		{
         			textItem.repaint(textItem.getDisplayRect());
