@@ -1,0 +1,1 @@
+Flemil is a J2ME mobile UI library that makes possible the development of highly attractive yet resource friendly J2ME applications
